@@ -1,0 +1,4 @@
+requests>=2.25.0
+urllib3<2
+plyer>=2.0
+win10toast>=0.9
