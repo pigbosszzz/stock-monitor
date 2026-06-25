@@ -351,6 +351,7 @@ CONCEPT_STOCKS = {
     "半导体概念": ["600667", "688981", "002371", "600584", "603986", "300661", "688012", "002156"],
     "国产芯片": ["600667", "688981", "002371", "600584", "603986", "002049", "688012", "300223"],
     "先进封装": ["600667", "600584", "002156", "688012", "300604", "603005", "688037"],
+    "PCB": ["600176", "002916", "603228", "600183", "002938", "002384", "300476"],
     "白酒": ["600519", "000858", "600809", "000568", "603369", "002304", "600559", "000596"],
     "酿酒概念": ["600519", "000858", "600809", "000568", "603369", "600559", "000596"],
     "味蕾经济": ["600519", "000858", "600809", "000568", "603369", "002304"],
@@ -364,7 +365,16 @@ CONCEPT_STOCKS = {
     "工程建设": ["601668", "601390", "601618", "600170", "600528", "002051", "601800"],
     "国企改革": ["600519", "600028", "601088", "600900", "601857", "600941", "601728"],
     "军工": ["600760", "600893", "000768", "002013", "600038", "600862", "300034"],
+    "PEEK材料概念": ["600176", "002324", "300777", "601208", "002886", "300571"],
+    "玻璃玻纤": ["600176", "600660", "002080", "600529", "601636", "600586"],
     "建筑装饰": ["600667", "002081", "300746", "301038", "300844", "301024", "300492"],
+}
+
+# 概念名称别名映射（API返回名 → 更易懂的展示名）
+CONCEPT_ALIAS = {
+    "PCB": "电子布",
+    "DeepSeek概念": "DeepSeek",
+    "PEEK材料概念": "PEEK材料",
 }
 
 
@@ -473,18 +483,20 @@ def format_sector_section(code: str) -> str:
 
     boards = fetch_stock_boards(code)
     concept_constituents = []
+    first_raw_concept = None
     if boards:
         industry = boards[0]["name"]
-        concepts = [b["name"] for b in boards[1:]]
-        if concepts:
-            parts.append("    \033[36m行业\033[0m: %s    \033[36m概念\033[0m: %s" % (industry, " | ".join(concepts[:6])))
-            # 取第一个概念板块的成分股展示
-            concept_constituents = fetch_concept_constituents(concepts[0])
+        raw_concepts = [b["name"] for b in boards[1:]]
+        display_concepts = [CONCEPT_ALIAS.get(n, n) for n in raw_concepts]
+        if display_concepts:
+            parts.append("    \033[36m行业\033[0m: %s    \033[36m概念\033[0m: %s" % (industry, " | ".join(display_concepts[:10])))
+            first_raw_concept = raw_concepts[0]
+            concept_constituents = fetch_concept_constituents(first_raw_concept)
         else:
             parts.append("    \033[36m行业\033[0m: %s" % industry)
 
     if concept_constituents:
-        parts.append("    \033[35m%s成分股\033[0m:" % concepts[0])
+        parts.append("    \033[35m%s成分股\033[0m:" % display_concepts[0])
         for pd in concept_constituents:
             chg, pct = pd["change"], pd["percent"]
             prefix = "+" if chg >= 0 else ""
