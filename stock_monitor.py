@@ -741,27 +741,38 @@ def generate_stock_advice(
     if announcements:
         for ann in announcements[:3]:
             t = ann["title"]
-            # 提取公告中的关键词摘要
-            tag = ""
+            # 从标题提取关键内容（去掉股票名前缀）
+            summary = t
+            # 去掉 "贵州茅台:" 或 "XX公司:" 这类前缀
+            import re
+            summary = re.sub(r'^[^:：]+[：:]\s*', '', summary)
+            # 去掉末尾的 "公告" 二字
+            summary = re.sub(r'公告$', '', summary)
+            # 如果太长，截取前 22 字
+            if len(summary) > 22:
+                summary = summary[:20] + ".."
+            # 提取关键词标签
             if "分红" in t or "派息" in t or "送转" in t or "分配" in t:
-                tag = "分红"
+                tag = "[分红]"
             elif "增减持" in t or "增持" in t or "减持" in t:
-                tag = "增减持"
+                tag = "[增减持]"
             elif "回购" in t:
-                tag = "回购"
+                tag = "[回购]"
             elif "业绩" in t or "预告" in t or "快报" in t:
-                tag = "业绩"
+                tag = "[业绩]"
             elif "合同" in t or "中标" in t or "订单" in t:
-                tag = "订单"
+                tag = "[订单]"
             elif "聘任" in t or "辞职" in t or "人事" in t:
-                tag = "人事"
+                tag = "[人事]"
             elif "决" in t and ("议" in t or "案" in t):
-                tag = "决议"
+                tag = "[决议]"
             elif "实施" in t:
-                tag = "实施"
+                tag = "[实施]"
+            elif "异常" in t:
+                tag = "[异常]"
             else:
-                tag = "公告"
-            announce_highlights.append("%s (%s)" % (tag, ann["time"]))
+                tag = "[公告]"
+            announce_highlights.append("%s %s (%s)" % (tag, summary, ann["time"]))
 
     return {
         "signal": signal,

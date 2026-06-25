@@ -26,7 +26,8 @@
       "Bash(curl -s --max-time 5 \"https://news.10jqka.com.cn/tapp/news/push/stock?stock=600519&type=0\")",
       "Bash(curl -s --max-time 5 \"https://push2.eastmoney.com/api/qt/stock/news?secid=1.600519&count=5&type=1\")",
       "Bash(curl -s --max-time 5 \"https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&knum=5\")",
-      "Bash(curl -s --max-time 8 \"http://news.10jqka.com.cn/field/stock/\")"
+      "Bash(curl -s --max-time 8 \"http://news.10jqka.com.cn/field/stock/\")",
+      "Bash(git commit -m 'feat: 公告显示增加内容概述，不再仅有日期 *)"
     ]
   }
 }
