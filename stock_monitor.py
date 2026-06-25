@@ -358,14 +358,8 @@ def generate_stock_advice(
     stock_pct = stock_data["percent"]
     volume = stock_data["volume"]
 
-    # ── 1. Pivot Point ──
+    # ── 基准价（仅用于参考线）──
     pivot = (high + low + price) / 3
-    r1 = max(2 * pivot - low, price * 0.98)
-    s1 = min(2 * pivot - high, price * 1.02)
-    if r1 <= price:
-        r1 = price * 1.03
-    if s1 >= price:
-        s1 = price * 0.97
 
     # ── 2. MA 分析 ──
     ma5 = ma10 = ma20 = 0
@@ -411,6 +405,51 @@ def generate_stock_advice(
         # 价格偏离 MA 过大时预警
         if abs(ma5_pct) > 8:
             trend += " (偏离MA5 %.1f%%)" % ma5_pct
+
+    # ── 目标价 / 止损价（综合 MA 支撑阻力 + Pivot + 波动率）──
+    # 默认值：退化为简单的 pivot 百分比
+    target_price = round(max(price * 1.03, 2 * pivot - low), 2)
+    stop_loss = round(min(price * 0.97, 2 * pivot - high), 2)
+
+    if kline_data and len(kline_data) >= 5:
+        closes = [k["close"] for k in kline_data[-10:] if k["close"] > 0]
+        if len(closes) >= 5:
+            # 近期波动率 = 区间振幅百分比
+            range_pct = (max(closes) - min(closes)) / min(closes) * 100 if min(closes) else 5.0
+            vola = min(max(range_pct, 1.0), 10.0)
+        else:
+            vola = 3.0
+
+        # === 根据趋势设定目标/止损 ===
+        if trend == "多头排列" and ma5 and ma20:
+            # 上涨趋势：目标在 MA20 之上延伸，止损在 MA5 之下
+            target_price = round(max(ma20 * 1.02, price + (ma20 - ma10) * 0.3), 2)
+            stop_loss = round(min(ma5 * 0.98, low * 0.97), 2)
+        elif trend == "空头排列" and ma5 and ma10:
+            # 下跌趋势：目标看 MA5 或 MA10（反弹压力），止损在今日高之上
+            target_price = round(min(ma10, ma5) * 0.995, 2)  # 反弹到 5/10 日线附近
+            stop_loss = round(high * 1.01, 2)  # 突破今日高止损
+        elif trend == "短线偏多" and ma5 and ma10:
+            # 短线偏多：目标 MA10，止损 MA5
+            target_price = round(ma10 * 0.995, 2)
+            stop_loss = round(min(ma5 * 0.98, low * 0.98), 2)
+        elif trend == "短线偏空" and ma5:
+            # 短线偏空：反弹看 MA5，止损在今日高
+            target_price = round(ma5 * 0.995, 2)
+            stop_loss = round(high * 1.01, 2)
+        elif trend == "均线收敛" and ma5 and ma20:
+            target_price = round(ma20 * 1.01, 2)
+            stop_loss = round(min(ma5 * 0.97, low * 0.97), 2)
+        else:
+            # 震荡市：用波动率设定合理目标/止损
+            target_price = round(price * (1 + vola / 100), 2)
+            stop_loss = round(price * (1 - vola / 100), 2)
+
+        # 合理化检查
+        if target_price <= price:
+            target_price = round(price * max(1.02, 1 + vola / 200), 2)
+        if stop_loss >= price:
+            stop_loss = round(price * min(0.98, 1 - vola / 200), 2)
 
     # ── 3. 成交量分析 ──
     vol_analysis = ""
@@ -535,8 +574,8 @@ def generate_stock_advice(
     return {
         "signal": signal,
         "detail": detail,
-        "target_price": round(r1, 2),
-        "stop_loss": round(s1, 2),
+        "target_price": target_price,
+        "stop_loss": stop_loss,
         "pivot": round(pivot, 2),
         "score": round(score, 1),
         "warnings": warnings,
