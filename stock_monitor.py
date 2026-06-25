@@ -267,126 +267,270 @@ class ChangeTarget:
 
 # ── 大盘指数与投资建议 ────────────────────────────────────────────────
 
-# 主流指数代码
-MARKET_INDEXES = {
-    "sh000001": "上证指数",
-    "sz399001": "深证成指",
-    "sz399006": "创业板指",
-}
-
-
-def _classify_market(code_key: str) -> str:
-    """判断股票所属市场，返回对应的大盘指数代码。"""
-    if code_key.startswith(("sh6", "sh5", "sh9")):
-        return "sh000001"
-    elif code_key.startswith(("sz3",)):
-        return "sz399006"
-    else:
-        return "sz399001"
+# 历史 K 线缓存（避免重复请求）
+HIST_KLINE_CACHE: dict = {}
+# 公告缓存
+ANNOUNCE_CACHE: dict = {}
 
 
 def fetch_market_index() -> Optional[dict]:
     """获取大盘指数（上证指数）实时行情。"""
-    data = fetch_realtime_price("sh000001")
-    return data
+    return fetch_realtime_price("sh000001")
 
 
-def generate_stock_advice(stock_data: dict, index_data: Optional[dict] = None) -> dict:
+def fetch_historical_kline(code: str, days: int = 30) -> Optional[list]:
     """
-    基于 pivot point 技术分析和市场对比生成投资建议。
-    返回：target_price, stop_loss, signal, reasoning
+    从新浪财经获取日 K 线数据（含 MA5/MA10/MA20）。
+    返回列表，每项: {day, open, close, high, low, volume, ma5, ma10, ma20}
+    """
+    # 缓存
+    if code in HIST_KLINE_CACHE:
+        return HIST_KLINE_CACHE[code]
+
+    key = stock_code_key(code)
+    url = ("http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+           "CN_MarketData.getKLineData?symbol=%s&scale=240&ma=5,10,20&datalen=%d"
+           % (key, days))
+    try:
+        resp = requests.get(url, timeout=8)
+        data = resp.json()
+        kline = []
+        for d in data:
+            kline.append({
+                "day": d["day"][:10],
+                "open": float(d["open"]),
+                "close": float(d["close"]),
+                "high": float(d["high"]),
+                "low": float(d["low"]),
+                "volume": int(d["volume"]) if d["volume"] else 0,
+                "ma5": float(d.get("ma_price5", 0) or 0),
+                "ma10": float(d.get("ma_price10", 0) or 0),
+                "ma20": float(d.get("ma_price20", 0) or 0),
+            })
+        # 按日期排序（旧→新）
+        kline.sort(key=lambda x: x["day"])
+        HIST_KLINE_CACHE[code] = kline
+        return kline
+    except Exception as e:
+        log.debug("获取历史 K 线失败 [%s]: %s", code, e)
+        return None
+
+
+def fetch_stock_announcements(code: str, limit: int = 5) -> list:
+    """从东方财富获取最新公司公告。"""
+    if code in ANNOUNCE_CACHE:
+        return ANNOUNCE_CACHE[code]
+
+    url = ("https://np-anotice-stock.eastmoney.com/api/security/ann?"
+           "sr=-1&page_size=%d&page_index=1&ann_type=A&stock_list=%s&f_node=0&s_node=0"
+           % (limit, code))
+    try:
+        resp = requests.get(url, timeout=8)
+        data = resp.json()
+        items = data.get("data", {}).get("list", [])
+        result = []
+        for item in items:
+            title = item.get("title", "").strip()
+            stime = item.get("display_time", "")[:10]
+            if title:
+                result.append({"title": title, "time": stime})
+        ANNOUNCE_CACHE[code] = result
+        return result
+    except Exception as e:
+        log.debug("获取公告失败 [%s]: %s", code, e)
+        return []
+
+
+def generate_stock_advice(
+    stock_data: dict,
+    index_data: Optional[dict] = None,
+    kline_data: Optional[list] = None,
+    announcements: Optional[list] = None,
+) -> dict:
+    """
+    综合投资建议生成器。
+    融合：Pivot Point + MA 趋势 + 成交量分析 + 相对大盘 + 公告信息
     """
     price = stock_data["price"]
     high = stock_data["high"]
     low = stock_data["low"]
-    close = price  # 当前价当作收盘价计算 pivot
     prev_close = stock_data["prev_close"]
     stock_pct = stock_data["percent"]
+    volume = stock_data["volume"]
 
-    # ── Pivot Point 计算 ──
-    pivot = (high + low + close) / 3
-    r1 = 2 * pivot - low   # 第一阻力位 → 目标价
-    s1 = 2 * pivot - high  # 第一支撑位 → 止损价
-
-    # 合理化：目标价不能低于现价太多，止损不能高于现价太多
-    r1 = max(r1, price * 0.98)
-    s1 = min(s1, price * 1.02)
+    # ── 1. Pivot Point ──
+    pivot = (high + low + price) / 3
+    r1 = max(2 * pivot - low, price * 0.98)
+    s1 = min(2 * pivot - high, price * 1.02)
     if r1 <= price:
         r1 = price * 1.03
     if s1 >= price:
         s1 = price * 0.97
 
-    # ── 日内强弱 ──
+    # ── 2. MA 分析 ──
+    ma5 = ma10 = ma20 = 0
+    ma5_pct = ma10_pct = ma20_pct = 0.0  # 价格偏离 MA 的百分比
+    trend = "震荡"
+    trend_score = 0.0
+
+    if kline_data and len(kline_data) >= 3:
+        latest = kline_data[-1]
+        ma5 = latest["ma5"]
+        ma10 = latest["ma10"]
+        ma20 = latest["ma20"]
+        ma5_pct = (price - ma5) / ma5 * 100 if ma5 else 0
+        ma10_pct = (price - ma10) / ma10 * 100 if ma10 else 0
+        ma20_pct = (price - ma20) / ma20 * 100 if ma20 else 0
+
+        # MA 多头排列判定：MA5 > MA10 > MA20
+        bull_mas = ma5 > ma10 > ma20
+        bear_mas = ma5 < ma10 < ma20
+        # 价格在 MA 上方/下方
+        above_ma5 = price > ma5
+        above_ma20 = price > ma20
+
+        if bull_mas and above_ma5 and above_ma20:
+            trend = "多头排列"
+            trend_score = 1.5
+        elif bear_mas and not above_ma5 and not above_ma20:
+            trend = "空头排列"
+            trend_score = -1.5
+        elif above_ma5 and price > ma10:
+            trend = "短线偏多"
+            trend_score = 0.8
+        elif not above_ma5 and price < ma10:
+            trend = "短线偏空"
+            trend_score = -0.8
+        elif ma5 < ma10 < ma20:
+            trend = "均线收敛"
+            trend_score = -0.3
+        else:
+            trend = "均线交织"
+            trend_score = 0.0
+
+        # 价格偏离 MA 过大时预警
+        if abs(ma5_pct) > 8:
+            trend += " (偏离MA5 %.1f%%)" % ma5_pct
+
+    # ── 3. 成交量分析 ──
+    vol_analysis = ""
+    vol_score = 0.0
+    vol_ratio = None
+    if kline_data and len(kline_data) >= 10:
+        # K 线量是股，转成手（1手=100股），与实时量单位统一
+        vols = [k["volume"] / 100.0 for k in kline_data[-20:] if k["volume"] > 0]
+        if vols:
+            avg_vol = sum(vols) / len(vols)
+            vol_ratio = volume / avg_vol if avg_vol else 1.0
+            if vol_ratio > 2.0:
+                vol_analysis = "放量%.1f倍" % vol_ratio
+                vol_score = 0.5 if stock_pct > 0 else -0.8
+            elif vol_ratio > 1.5:
+                vol_analysis = "放量%.1f倍" % vol_ratio
+                vol_score = 0.3 if stock_pct > 0 else -0.4
+            elif vol_ratio < 0.5:
+                vol_analysis = "缩量%.0f%%" % (vol_ratio * 100)
+                vol_score = -0.2
+            else:
+                vol_analysis = "量能正常"
+
+    # ── 4. 日内强弱 ──
     day_range = high - low
     pos_in_range = (price - low) / day_range if day_range > 0 else 0.5
+    intraday_score = (pos_in_range - 0.5) * 2
 
-    # ── 相对大盘分析 ──
+    # ── 5. 相对大盘 ──
     index_pct = index_data["percent"] if index_data else 0
     relative_strength = stock_pct - index_pct
+    rel_score = min(max(relative_strength / 2.0, -2.0), 2.0)
 
-    # ── 综合信号评分 (-5 ~ +5) ──
-    score = 0.0
+    # ── 6. 绝对涨跌幅分 ──
+    pct_score = min(max(stock_pct / 3.0, -1.5), 1.5)
 
-    # 1. 日内位置分
-    score += (pos_in_range - 0.5) * 2
-
-    # 2. 相对于 pivot 的位置
-    score += 1.0 if price > pivot else -1.0
-    score += min(max((price - pivot) / (day_range or 1) * 1.5, -1.5), 1.5)
-
-    # 3. 相对大盘强度
-    score += min(max(relative_strength / 2.0, -2.0), 2.0)
-
-    # 4. 绝对涨跌
-    score += min(max(stock_pct / 3.0, -1.5), 1.5)
-
-    # ── 生成信号 ──
+    # ── 综合评分 ──
+    score = intraday_score + trend_score + vol_score + rel_score + pct_score
     score = max(min(score, 5), -5)
 
+    # ── 生成信号 ──
     if score >= 2.0:
         signal = "买入 / 加仓"
         detail = "强势上涨，可考虑加仓"
         if relative_strength > 1.5:
             detail += "，明显跑赢大盘"
-        if pos_in_range > 0.7:
-            detail += "，日内处于高位"
-    elif score >= 0.5:
+        if vol_ratio > 2.0 if kline_data else False:
+            detail += "，量价配合良好"
+    elif score >= 0.8:
         signal = "持有"
-        detail = "走势平稳，继续持有"
-        if relative_strength > 0:
+        detail = "走势稳健，继续持有"
+        if trend == "多头排列":
+            detail += "，均线多头排列"
+        elif relative_strength > 0:
             detail += "，略强于大盘"
-        else:
-            detail += "，与大盘同步"
     elif score >= -0.5:
         signal = "持有观察"
-        detail = "窄幅震荡，观望为主"
+        detail = "方向不明，观望为主"
         if relative_strength < -1:
             detail += "，注意大盘拖累"
+        if vol_ratio < 0.5 if kline_data else False:
+            detail += "，缩量整理中"
     elif score >= -2.0:
         signal = "谨慎持有"
         detail = "偏弱运行，注意风险"
-        if s1 < price * 0.95:
-            detail += "，止损空间充足"
-        else:
-            detail += "，严格设好止损"
+        if trend == "空头排列":
+            detail += "，均线空头压制"
+        elif "放量" in vol_analysis and stock_pct < 0:
+            detail += "，放量下跌需警惕"
     else:
         signal = "减仓 / 回避"
         detail = "弱势明显，建议减仓"
+        if "放量" in vol_analysis and stock_pct < 0:
+            detail += "，放量杀跌"
         if relative_strength < -2:
             detail += "，大幅跑输大盘"
-        if pos_in_range < 0.3:
-            detail += "，持续走低"
 
     # ── 风险提示 ──
-    risk_warning = ""
-    if day_range > 0 and price < low + day_range * 0.15:
-        risk_warning = "接近日内最低点，关注能否企稳"
-    elif day_range > 0 and price > high - day_range * 0.15:
-        risk_warning = "接近日内最高点，注意回落风险"
+    warnings = []
+    if price < low + day_range * 0.15:
+        warnings.append("接近日内最低，关注能否企稳")
+    elif price > high - day_range * 0.15:
+        warnings.append("接近日内最高，注意回落")
     if stock_pct > 7:
-        risk_warning = "涨幅过大，警惕回调风险"
+        warnings.append("涨幅过大，警惕回调")
     elif stock_pct < -7:
-        risk_warning = "跌幅过大，恐慌情绪释放中"
+        warnings.append("跌幅过大，恐慌释放中")
+    # MA 偏离预警
+    if ma5 and abs(ma5_pct) > 5:
+        warnings.append("偏离MA5 %.1f%%" % ma5_pct)
+    # 放量下跌预警
+    if stock_pct < -2 and "放量" in vol_analysis:
+        warnings.append("放量下跌注意风险")
+
+    # ── 公告分析 ──
+    announce_highlights = []
+    if announcements:
+        for ann in announcements[:3]:
+            t = ann["title"]
+            # 提取公告中的关键词摘要
+            tag = ""
+            if "分红" in t or "派息" in t or "送转" in t or "分配" in t:
+                tag = "分红"
+            elif "增减持" in t or "增持" in t or "减持" in t:
+                tag = "增减持"
+            elif "回购" in t:
+                tag = "回购"
+            elif "业绩" in t or "预告" in t or "快报" in t:
+                tag = "业绩"
+            elif "合同" in t or "中标" in t or "订单" in t:
+                tag = "订单"
+            elif "聘任" in t or "辞职" in t or "人事" in t:
+                tag = "人事"
+            elif "决" in t and ("议" in t or "案" in t):
+                tag = "决议"
+            elif "实施" in t:
+                tag = "实施"
+            else:
+                tag = "公告"
+            announce_highlights.append("%s (%s)" % (tag, ann["time"]))
 
     return {
         "signal": signal,
@@ -395,20 +539,32 @@ def generate_stock_advice(stock_data: dict, index_data: Optional[dict] = None) -
         "stop_loss": round(s1, 2),
         "pivot": round(pivot, 2),
         "score": round(score, 1),
-        "risk_warning": risk_warning,
+        "warnings": warnings,
         "index_pct": index_pct,
         "relative_strength": round(relative_strength, 2),
+        # 新增字段
+        "trend": trend,
+        "ma5": ma5,
+        "ma10": ma10,
+        "ma20": ma20,
+        "ma5_pct": round(ma5_pct, 1),
+        "ma10_pct": round(ma10_pct, 1),
+        "ma20_pct": round(ma20_pct, 1),
+        "vol_analysis": vol_analysis,
+        "vol_ratio": round(vol_ratio, 1) if vol_ratio else None,
+        "announce_highlights": announce_highlights,
     }
 
 
 def format_advice_section(advice: dict) -> str:
-    """格式化投资建议区块。"""
+    """格式化完整的投资建议区块。"""
     parts = []
     parts.append("  " + "-" * 56)
 
     sig = advice["signal"]
     score = advice["score"]
 
+    # 信号颜色
     if score >= 1:
         score_color = "\033[91m"
     elif score >= -1:
@@ -429,6 +585,32 @@ def format_advice_section(advice: dict) -> str:
     parts.append("  %s  评分: %s" % (sig_tag, score_display))
     parts.append("    \033[90m%s\033[0m" % advice["detail"])
 
+    # ── MA 趋势线 ──
+    trend = advice.get("trend", "")
+    ma5 = advice.get("ma5", 0)
+    ma10 = advice.get("ma10", 0)
+    ma20 = advice.get("ma20", 0)
+    if ma5:
+        # 颜色根据价格相对 MA 的位置
+        def ma_color(pct):
+            if abs(pct) < 1:
+                return "\033[93m"  # 黄=持平
+            return "\033[91m" if pct > 0 else "\033[92m"
+        parts.append(
+            "    MA5: %s%.2f(%+.1f%%)\033[0m  MA10: %s%.2f(%+.1f%%)\033[0m  MA20: %s%.2f(%+.1f%%)\033[0m  %s"
+            % (ma_color(advice["ma5_pct"]), ma5, advice["ma5_pct"],
+               ma_color(advice["ma10_pct"]), ma10, advice["ma10_pct"],
+               ma_color(advice["ma20_pct"]), ma20, advice["ma20_pct"],
+               trend)
+        )
+
+    # ── 成交量 ──
+    vol = advice.get("vol_analysis", "")
+    vol_r = advice.get("vol_ratio")
+    if vol_r:
+        parts.append("    成交量: \033[1m%s\033[0m (近20日均量对比)" % vol)
+
+    # ── 目标/止损/枢轴 ──
     parts.append(
         "    \033[36m目标价\033[0m: \033[1;97m%.2f\033[0m  "
         "\033[35m止损价\033[0m: \033[1;97m%.2f\033[0m  "
@@ -436,6 +618,7 @@ def format_advice_section(advice: dict) -> str:
         % (advice["target_price"], advice["stop_loss"], advice["pivot"])
     )
 
+    # ── 大盘对比 ──
     idx_pct = advice["index_pct"]
     rel = advice["relative_strength"]
     idx_prefix = "+" if idx_pct >= 0 else ""
@@ -446,8 +629,14 @@ def format_advice_section(advice: dict) -> str:
         % (idx_prefix, idx_pct, rel_color, rel_prefix, rel)
     )
 
-    if advice["risk_warning"]:
-        parts.append("    \033[93m%s\033[0m" % advice["risk_warning"])
+    # ── 公告亮点 ──
+    anns = advice.get("announce_highlights", [])
+    if anns:
+        parts.append("    \033[90m近日公告: %s\033[0m" % " | ".join(anns))
+
+    # ── 风险提示 ──
+    for w in advice.get("warnings", []):
+        parts.append("    \033[93m%s\033[0m" % w)
 
     return "\n".join(parts)
 
@@ -611,7 +800,16 @@ def monitor_loop(
                 try:
                     if index_cache is None:
                         index_cache = fetch_market_index()
-                    advice = generate_stock_advice(data, index_cache)
+                    # 首次取历史 K 线和公告（缓存）
+                    if code not in HIST_KLINE_CACHE:
+                        HIST_KLINE_CACHE[code] = fetch_historical_kline(code)
+                    if code not in ANNOUNCE_CACHE:
+                        ANNOUNCE_CACHE[code] = fetch_stock_announcements(code)
+                    kline = HIST_KLINE_CACHE.get(code)
+                    anns = ANNOUNCE_CACHE.get(code)
+                    advice = generate_stock_advice(
+                        data, index_cache, kline_data=kline, announcements=anns
+                    )
                     print(format_advice_section(advice))
                 except Exception as e:
                     log.debug("生成投资建议失败: %s", e)

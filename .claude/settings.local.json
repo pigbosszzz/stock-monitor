@@ -7,7 +7,26 @@
       "Bash(python stock_monitor.py 600519 --once --no-advice)",
       "Bash(git add *)",
       "Bash(git commit -m 'feat: 增加投资建议功能 *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s \"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh600519,day,,,30\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); days=d['data']['sh600519']['day']; print\\('共%d条K线'%len\\(days\\)\\); [print\\(i\\) for i in days[:3]+days[-3:]]\")",
+      "Bash(curl -s \"http://web.sqt.gtimg.cn/q=sh600519\")",
+      "Bash(curl -s --max-time 5 \"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh600519,day,,,30\")",
+      "Bash(curl -s --max-time 5 \"http://ifzq.gtimg.cn/appstock/app/kline/mkline?param=sh600519,day,,,30\")",
+      "Bash(curl -s --max-time 10 \"https://push2.eastmoney.com/api/qt/stock/kline/get?secid=1.600519&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&end=20500101&lmt=20\")",
+      "Bash(python -c ' *)",
+      "Bash(curl -s --max-time 10 \"https://push2.eastmoney.com/api/qt/stock/kline/get?secid=0.600519&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&end=20500101&lmt=20\")",
+      "Bash(curl -s --max-time 10 \"https://push2.eastmoney.com/api/qt/stock/kline/get?secid=1.600519&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&end=20500101&lmt=20\" -o /dev/stdout)",
+      "Bash(curl -v -s --max-time 5 \"http://push2.eastmoney.com/api/qt/stock/kline/get?secid=1.600519&fields1=f1,f2,f3&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&lmt=20\")",
+      "Bash(curl -s --max-time 5 \"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=sh600519&scale=30&ma=5&datalen=20\")",
+      "Bash(curl -s --max-time 5 \"https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=SH600519&begin=20260101&period=day&count=20\")",
+      "Bash(curl -s --max-time 10 \"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=sh600519&scale=240&ma=5,10,20&datalen=30\")",
+      "Bash(curl -s --max-time 5 \"https://push2.eastmoney.com/api/qt/stock/get?secid=1.600519&fields=f58,f734,f735\")",
+      "Bash(curl -s --max-time 5 \"https://vip.stock.finance.sina.com.cn/corp/go.php/vCB_AllNewsStock/symbol/600519.phtml\")",
+      "Bash(curl -s --max-time 5 \"https://news.10jqka.com.cn/tapp/news/push/stock?stock=600519&type=0\")",
+      "Bash(curl -s --max-time 5 \"https://push2.eastmoney.com/api/qt/stock/news?secid=1.600519&count=5&type=1\")",
+      "Bash(curl -s --max-time 5 \"https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&knum=5\")",
+      "Bash(curl -s --max-time 8 \"http://news.10jqka.com.cn/field/stock/\")"
     ]
   }
 }
