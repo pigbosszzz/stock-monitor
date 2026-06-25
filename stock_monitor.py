@@ -355,8 +355,39 @@ def _em_code(code: str) -> str:
     return "SZ" + key[2:]
 
 
-def fetch_stock_boards(code: str) -> list:
-    """从东方财富 F10 获取股票所属概念板块列表。"""
+# 需要过滤掉的泛金融/市场风格类板块关键词
+_BOARD_BLACKLIST = {
+    "Ⅱ", "Ⅲ",          # 子行业分类（白酒Ⅱ等）
+    "题材股", "趋势股", "大盘股", "小盘股", "小盘成长", "权重股", "百元股",
+    "百日新高", "历史新高", "近期新高",
+    "最近多板", "昨日涨停", "昨日涨停_含一字", "昨日高振幅",
+    "标准普尔", "富时罗素", "MSCI中国", "证金持股", "社保重仓",
+    "深股通", "沪股通", "深证100", "上证180", "上证380", "沪深300",
+    "东方财富热股", "茅指数", "宁组合", "行业龙头",
+    "破净", "破发", "低价股", "高市盈率", "低市盈率",
+    "活跃股", "融资融券", "预盈预增", "预亏预减",
+    "机构重仓", "基金重仓", "QFII重仓",
+}
+
+
+def _is_generic_board(name: str) -> bool:
+    """判断是否为泛金融/风格类板块名称（应被过滤）。"""
+    name = name.strip()
+    if not name:
+        return True
+    if any(kw in name for kw in _BOARD_BLACKLIST):
+        return True
+    # 过滤纯数字/符号类名称
+    if all(c in "0123456789ⅢⅡⅠ" for c in name):
+        return True
+    return False
+
+
+def fetch_stock_boards(code: str, max_boards: int = 12) -> list:
+    """
+    从东方财富 F10 获取股票所属概念板块列表。
+    返回 meaningful 板块名称列表（已过滤泛金融类）。
+    """
     if code in BOARDS_CACHE:
         return BOARDS_CACHE[code]
 
@@ -372,13 +403,14 @@ def fetch_stock_boards(code: str) -> list:
         seen = set()
         for item in data.get("ssbk", []):
             name = (item.get("BOARD_NAME") or "").strip()
-            rank = item.get("BOARD_RANK", 99)
-            if name and name not in seen and rank <= 15:
+            rank = int(item.get("BOARD_RANK", 99))
+            if name and name not in seen and not _is_generic_board(name):
                 seen.add(name)
                 boards.append({"name": name, "rank": rank})
+        # 按 rank 排序，取前 N 个最有意义的板块
         boards.sort(key=lambda x: x["rank"])
-        BOARDS_CACHE[code] = boards
-        return boards
+        BOARDS_CACHE[code] = boards[:max_boards]
+        return boards[:max_boards]
     except Exception as e:
         log.debug("获取板块失败 [%s]: %s", code, e)
         return []
@@ -425,7 +457,7 @@ def format_sector_section(code: str) -> str:
 
     boards = fetch_stock_boards(code)
     if boards:
-        names = [b["name"] for b in boards[:8]]
+        names = [b["name"] for b in boards]
         parts.append("    \033[36m概念板块\033[0m: %s" % " | ".join(names))
 
     peers = fetch_industry_peers(code)
