@@ -5,7 +5,7 @@ A股实时股价监控提醒工具
   1. 实时获取 A 股股价（腾讯免费接口，无需 API Key）
   2. 监控多个股票，支持多个目标价
   3. 达到目标价时：桌面通知 + 声音提醒 + 控制台高亮
-  4. 记录历史提醒日志
+  5. 结合大盘信息的投资建议（目标价/止损价/持有建议）
 
 用法示例：
   python stock_monitor.py 600519 --target 190 195 --interval 10
@@ -265,6 +265,193 @@ class ChangeTarget:
         return "%s %.1f%% %s" % (status, self.percent, arrow)
 
 
+# ── 大盘指数与投资建议 ────────────────────────────────────────────────
+
+# 主流指数代码
+MARKET_INDEXES = {
+    "sh000001": "上证指数",
+    "sz399001": "深证成指",
+    "sz399006": "创业板指",
+}
+
+
+def _classify_market(code_key: str) -> str:
+    """判断股票所属市场，返回对应的大盘指数代码。"""
+    if code_key.startswith(("sh6", "sh5", "sh9")):
+        return "sh000001"
+    elif code_key.startswith(("sz3",)):
+        return "sz399006"
+    else:
+        return "sz399001"
+
+
+def fetch_market_index() -> Optional[dict]:
+    """获取大盘指数（上证指数）实时行情。"""
+    data = fetch_realtime_price("sh000001")
+    return data
+
+
+def generate_stock_advice(stock_data: dict, index_data: Optional[dict] = None) -> dict:
+    """
+    基于 pivot point 技术分析和市场对比生成投资建议。
+    返回：target_price, stop_loss, signal, reasoning
+    """
+    price = stock_data["price"]
+    high = stock_data["high"]
+    low = stock_data["low"]
+    close = price  # 当前价当作收盘价计算 pivot
+    prev_close = stock_data["prev_close"]
+    stock_pct = stock_data["percent"]
+
+    # ── Pivot Point 计算 ──
+    pivot = (high + low + close) / 3
+    r1 = 2 * pivot - low   # 第一阻力位 → 目标价
+    s1 = 2 * pivot - high  # 第一支撑位 → 止损价
+
+    # 合理化：目标价不能低于现价太多，止损不能高于现价太多
+    r1 = max(r1, price * 0.98)
+    s1 = min(s1, price * 1.02)
+    if r1 <= price:
+        r1 = price * 1.03
+    if s1 >= price:
+        s1 = price * 0.97
+
+    # ── 日内强弱 ──
+    day_range = high - low
+    pos_in_range = (price - low) / day_range if day_range > 0 else 0.5
+
+    # ── 相对大盘分析 ──
+    index_pct = index_data["percent"] if index_data else 0
+    relative_strength = stock_pct - index_pct
+
+    # ── 综合信号评分 (-5 ~ +5) ──
+    score = 0.0
+
+    # 1. 日内位置分
+    score += (pos_in_range - 0.5) * 2
+
+    # 2. 相对于 pivot 的位置
+    score += 1.0 if price > pivot else -1.0
+    score += min(max((price - pivot) / (day_range or 1) * 1.5, -1.5), 1.5)
+
+    # 3. 相对大盘强度
+    score += min(max(relative_strength / 2.0, -2.0), 2.0)
+
+    # 4. 绝对涨跌
+    score += min(max(stock_pct / 3.0, -1.5), 1.5)
+
+    # ── 生成信号 ──
+    score = max(min(score, 5), -5)
+
+    if score >= 2.0:
+        signal = "买入 / 加仓"
+        detail = "强势上涨，可考虑加仓"
+        if relative_strength > 1.5:
+            detail += "，明显跑赢大盘"
+        if pos_in_range > 0.7:
+            detail += "，日内处于高位"
+    elif score >= 0.5:
+        signal = "持有"
+        detail = "走势平稳，继续持有"
+        if relative_strength > 0:
+            detail += "，略强于大盘"
+        else:
+            detail += "，与大盘同步"
+    elif score >= -0.5:
+        signal = "持有观察"
+        detail = "窄幅震荡，观望为主"
+        if relative_strength < -1:
+            detail += "，注意大盘拖累"
+    elif score >= -2.0:
+        signal = "谨慎持有"
+        detail = "偏弱运行，注意风险"
+        if s1 < price * 0.95:
+            detail += "，止损空间充足"
+        else:
+            detail += "，严格设好止损"
+    else:
+        signal = "减仓 / 回避"
+        detail = "弱势明显，建议减仓"
+        if relative_strength < -2:
+            detail += "，大幅跑输大盘"
+        if pos_in_range < 0.3:
+            detail += "，持续走低"
+
+    # ── 风险提示 ──
+    risk_warning = ""
+    if day_range > 0 and price < low + day_range * 0.15:
+        risk_warning = "接近日内最低点，关注能否企稳"
+    elif day_range > 0 and price > high - day_range * 0.15:
+        risk_warning = "接近日内最高点，注意回落风险"
+    if stock_pct > 7:
+        risk_warning = "涨幅过大，警惕回调风险"
+    elif stock_pct < -7:
+        risk_warning = "跌幅过大，恐慌情绪释放中"
+
+    return {
+        "signal": signal,
+        "detail": detail,
+        "target_price": round(r1, 2),
+        "stop_loss": round(s1, 2),
+        "pivot": round(pivot, 2),
+        "score": round(score, 1),
+        "risk_warning": risk_warning,
+        "index_pct": index_pct,
+        "relative_strength": round(relative_strength, 2),
+    }
+
+
+def format_advice_section(advice: dict) -> str:
+    """格式化投资建议区块。"""
+    parts = []
+    parts.append("  " + "-" * 56)
+
+    sig = advice["signal"]
+    score = advice["score"]
+
+    if score >= 1:
+        score_color = "\033[91m"
+    elif score >= -1:
+        score_color = "\033[93m"
+    else:
+        score_color = "\033[92m"
+    score_display = "%s%+.1f\033[0m" % (score_color, score)
+
+    if "买入" in sig or "加仓" in sig:
+        sig_tag = "\033[91m[ %s ]\033[0m" % sig
+    elif "减仓" in sig or "回避" in sig:
+        sig_tag = "\033[92m[ %s ]\033[0m" % sig
+    elif "持有观察" in sig:
+        sig_tag = "\033[93m[ %s ]\033[0m" % sig
+    else:
+        sig_tag = "\033[93m[ %s ]\033[0m" % sig
+
+    parts.append("  %s  评分: %s" % (sig_tag, score_display))
+    parts.append("    \033[90m%s\033[0m" % advice["detail"])
+
+    parts.append(
+        "    \033[36m目标价\033[0m: \033[1;97m%.2f\033[0m  "
+        "\033[35m止损价\033[0m: \033[1;97m%.2f\033[0m  "
+        "\033[90m枢轴: %.2f\033[0m"
+        % (advice["target_price"], advice["stop_loss"], advice["pivot"])
+    )
+
+    idx_pct = advice["index_pct"]
+    rel = advice["relative_strength"]
+    idx_prefix = "+" if idx_pct >= 0 else ""
+    rel_prefix = "+" if rel >= 0 else ""
+    rel_color = "\033[91m" if rel > 0 else "\033[92m"
+    parts.append(
+        "    上证: %s%.2f%%  |  相对强度: %s%s%.2f%%\033[0m"
+        % (idx_prefix, idx_pct, rel_color, rel_prefix, rel)
+    )
+
+    if advice["risk_warning"]:
+        parts.append("    \033[93m%s\033[0m" % advice["risk_warning"])
+
+    return "\n".join(parts)
+
+
 # ── 显示格式化 ───────────────────────────────────────────────────────────
 
 def colorize(text: str, change: float) -> str:
@@ -363,6 +550,7 @@ def monitor_loop(
     no_sound: bool = False,
     no_notify: bool = False,
     open_url: bool = False,
+    no_advice: bool = False,
 ):
     """
     主监控循环。
@@ -379,6 +567,7 @@ def monitor_loop(
 
     check_count = 0
     alerts_history: list[dict] = []
+    index_cache = None  # 大盘指数缓存，每次循环取一次
 
     print_header(codes, targets, change_targets, interval)
 
@@ -414,8 +603,18 @@ def monitor_loop(
                 print("  [!] %s: 获取失败，跳过" % code)
                 continue
 
-            # 打印股价详情（format_stock_row 已包含完整布局）
+            # 打印股价详情
             print(format_stock_row(data))
+
+            # 投资建议（默认开启，--no-advice 关闭）
+            if not no_advice:
+                try:
+                    if index_cache is None:
+                        index_cache = fetch_market_index()
+                    advice = generate_stock_advice(data, index_cache)
+                    print(format_advice_section(advice))
+                except Exception as e:
+                    log.debug("生成投资建议失败: %s", e)
 
             # 检查价格目标
             for target in targets:
@@ -655,7 +854,7 @@ def parse_change_arg(arg: str) -> Optional[ChangeTarget]:
 def main():
     parser = argparse.ArgumentParser(
         prog="stock_monitor",
-        description="A 股实时股价监控提醒工具",
+        description="A 股实时股价监控提醒工具（含大盘分析+投资建议）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
             示例：
@@ -667,6 +866,8 @@ def main():
               %(prog)s 600519 --change -3         跌超 3%% 时提醒
               %(prog)s 600519 --change 3:below    跌超 3%% 时提醒
               %(prog)s 600519 -t 1220 -c 5        同时监控价格和涨跌幅
+              %(prog)s 600519 --once              查行情 + 自动出投资建议
+              %(prog)s 600519 --once --no-advice  只看行情，不要建议
         """),
     )
     parser.add_argument(
@@ -712,6 +913,10 @@ def main():
     parser.add_argument(
         "--debug", action="store_true",
         help="开启调试日志"
+    )
+    parser.add_argument(
+        "--no-advice", action="store_true",
+        help="关闭投资建议功能"
     )
 
     args = parser.parse_args()
@@ -760,6 +965,7 @@ def main():
             no_sound=args.no_sound,
             no_notify=args.no_notify,
             open_url=args.open_url,
+            no_advice=args.no_advice,
         )
     except KeyboardInterrupt:
         print("\n\n监控已手动停止。")
