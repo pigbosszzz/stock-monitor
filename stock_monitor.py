@@ -341,10 +341,31 @@ def fetch_stock_announcements(code: str, limit: int = 5) -> list:
         return []
 
 
-# ── 概念板块与同业股票 ──────────────────────────────────────────────────
+# ── 概念板块与成分股 ──────────────────────────────────────────────────
 
 BOARDS_CACHE: dict = {}
-PEERS_CACHE: dict = {}
+
+# 常见概念板块 → 代表成分股（代码列表）
+CONCEPT_STOCKS = {
+    "存储芯片": ["600667", "688981", "002371", "600584", "603986", "002049", "300661", "688012"],
+    "半导体概念": ["600667", "688981", "002371", "600584", "603986", "300661", "688012", "002156"],
+    "国产芯片": ["600667", "688981", "002371", "600584", "603986", "002049", "688012", "300223"],
+    "先进封装": ["600667", "600584", "002156", "688012", "300604", "603005", "688037"],
+    "白酒": ["600519", "000858", "600809", "000568", "603369", "002304", "600559", "000596"],
+    "酿酒概念": ["600519", "000858", "600809", "000568", "603369", "600559", "000596"],
+    "味蕾经济": ["600519", "000858", "600809", "000568", "603369", "002304"],
+    "超级品牌": ["600519", "000858", "600887", "000333", "002415", "600690", "000651"],
+    "光伏概念": ["601012", "600438", "688599", "688390", "603806", "002459", "300274"],
+    "新能源车": ["600104", "000625", "002594", "601238", "600733", "300750", "002074", "300124"],
+    "锂电池": ["300750", "002074", "002709", "300014", "002812", "688005", "300450", "300568"],
+    "人工智能": ["002230", "300308", "603019", "688256", "002415", "300124", "688008"],
+    "数据中心": ["600667", "000977", "603019", "300308", "688041", "300442", "600845"],
+    "绿色电力": ["600905", "601985", "600011", "600023", "600886", "000591", "300274", "601016"],
+    "工程建设": ["601668", "601390", "601618", "600170", "600528", "002051", "601800"],
+    "国企改革": ["600519", "600028", "601088", "600900", "601857", "600941", "601728"],
+    "军工": ["600760", "600893", "000768", "002013", "600038", "600862", "300034"],
+    "建筑装饰": ["600667", "002081", "300746", "301038", "300844", "301024", "300492"],
+}
 
 
 def _em_code(code: str) -> str:
@@ -421,74 +442,92 @@ def fetch_stock_boards(code: str, max_boards: int = 12) -> list:
         return []
 
 
-def fetch_industry_peers(code: str, limit: int = 6) -> list:
-    """从东方财富获取同行业对标股票。"""
-    if code in PEERS_CACHE:
-        return PEERS_CACHE[code]
+def _lookup_concept_stocks(concept_name: str) -> list:
+    """在 CONCEPT_STOCKS 映射中查找概念板块的成分股代码列表。"""
+    for key, stocks in CONCEPT_STOCKS.items():
+        if key == concept_name or key in concept_name or concept_name in key:
+            return stocks
+    return []
 
-    em_c = _em_code(code)
-    url = "http://emweb.securities.eastmoney.com/PC_HSF10/IndustryAnalysis/PageAjax?code=%s" % em_c
-    try:
-        resp = requests.get(
-            url, timeout=8,
-            headers={"User-Agent": "Mozilla/5.0", "Referer": "http://emweb.securities.eastmoney.com/"},
-        )
-        data = resp.json()
-        peers = []
-        seen = set()
-        for item in data.get("czxbj", []):
-            p_code = (item.get("CORRE_SECURITY_CODE") or "").strip()
-            p_name = (item.get("CORRE_SECURITY_NAME") or "").strip()
-            if p_code and p_name and p_code != code and p_code not in seen:
-                if "行业中值" not in p_name and "行业平均" not in p_name:
-                    seen.add(p_code)
-                    peers.append({"code": p_code, "name": p_name})
-        PEERS_CACHE[code] = peers[:limit]
-        return peers[:limit]
-    except Exception as e:
-        log.debug("获取同业失败 [%s]: %s", code, e)
+
+def fetch_concept_constituents(concept_name: str, max_stocks: int = 6) -> list:
+    """
+    获取某概念板块的成分股实时行情。
+    通过 CONCEPT_STOCKS 映射找到股票代码，再用 Tencent API 查价格。
+    """
+    codes = _lookup_concept_stocks(concept_name)
+    if not codes:
         return []
-
-
-def fetch_peer_prices(peers: list) -> list:
-    """批量获取同业股票的实时行情。"""
-    return [fetch_realtime_price(p["code"]) for p in peers]
+    results = []
+    for code in codes[:max_stocks]:
+        data = fetch_realtime_price(code)
+        if data:
+            results.append(data)
+    return results
 
 
 def format_sector_section(code: str) -> str:
-    """格式化板块和同业股票信息。"""
+    """格式化板块和概念成分股信息。"""
     parts = []
     parts.append("  " + "-" * 56)
 
     boards = fetch_stock_boards(code)
+    concept_constituents = []
     if boards:
-        # rank=1 的为行业分类，其余均为概念板块
         industry = boards[0]["name"]
         concepts = [b["name"] for b in boards[1:]]
         if concepts:
             parts.append("    \033[36m行业\033[0m: %s    \033[36m概念\033[0m: %s" % (industry, " | ".join(concepts[:6])))
+            # 取第一个概念板块的成分股展示
+            concept_constituents = fetch_concept_constituents(concepts[0])
         else:
             parts.append("    \033[36m行业\033[0m: %s" % industry)
 
-    peers = fetch_industry_peers(code)
-    if peers:
-        parts.append("    \033[35m同业股票\033[0m:")
-        peer_data = fetch_peer_prices(peers)
-        for i, p in enumerate(peers):
-            pd = peer_data[i] if i < len(peer_data) else None
-            if pd:
-                chg, pct = pd["change"], pd["percent"]
-                prefix = "+" if chg >= 0 else ""
-                _c = "\033[91m" if chg > 0 else ("\033[92m" if chg < 0 else "\033[0m")
-                chg_str = "%s%.2f" % (prefix, chg)
-                parts.append(
-                    "      %s(%s) \033[1m%.2f\033[0m %s%s(%.2f%%)\033[0m"
-                    % (pd["name"], pd["code"], pd["price"], _c, chg_str, pct)
-                )
-            else:
-                parts.append("      %s(%s) --" % (p["name"], p["code"]))
+    if concept_constituents:
+        parts.append("    \033[35m%s成分股\033[0m:" % concepts[0])
+        for pd in concept_constituents:
+            chg, pct = pd["change"], pd["percent"]
+            prefix = "+" if chg >= 0 else ""
+            _c = "\033[91m" if chg > 0 else ("\033[92m" if chg < 0 else "\033[0m")
+            chg_str = "%s%.2f" % (prefix, chg)
+            parts.append(
+                "      %s(%s) \033[1m%.2f\033[0m %s%s(%.2f%%)\033[0m"
+                % (pd["name"], pd["code"], pd["price"], _c, chg_str, pct)
+            )
+    else:
+        # 无成分股数据时显示行业对标股票
+        try:
+            em_c = _em_code(code)
+            url = "http://emweb.securities.eastmoney.com/PC_HSF10/IndustryAnalysis/PageAjax?code=%s" % em_c
+            resp = requests.get(url, timeout=8,
+                headers={"User-Agent": "Mozilla/5.0", "Referer": "http://emweb.securities.eastmoney.com/"})
+            data = resp.json()
+            peers = []
+            seen = set()
+            for item in data.get("czxbj", []):
+                p_code = (item.get("CORRE_SECURITY_CODE") or "").strip()
+                p_name = (item.get("CORRE_SECURITY_NAME") or "").strip()
+                if p_code and p_name and p_code != code and p_code not in seen:
+                    if "行业中值" not in p_name and "行业平均" not in p_name:
+                        seen.add(p_code)
+                        peers.append({"code": p_code, "name": p_name})
+            if peers:
+                parts.append("    \033[35m行业对标\033[0m:")
+                for p in peers[:5]:
+                    pd = fetch_realtime_price(p["code"])
+                    if pd:
+                        chg, pct = pd["change"], pd["percent"]
+                        prefix = "+" if chg >= 0 else ""
+                        _c = "\033[91m" if chg > 0 else ("\033[92m" if chg < 0 else "\033[0m")
+                        chg_str = "%s%.2f" % (prefix, chg)
+                        parts.append("      %s(%s) \033[1m%.2f\033[0m %s%s(%.2f%%)\033[0m"
+                            % (pd["name"], pd["code"], pd["price"], _c, chg_str, pct))
+                    else:
+                        parts.append("      %s(%s) --" % (p["name"], p["code"]))
+        except Exception:
+            pass
 
-    if not boards and not peers:
+    if not boards and not concept_constituents:
         return ""
 
     return "\n".join(parts)
