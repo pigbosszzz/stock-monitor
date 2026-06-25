@@ -557,6 +557,7 @@ def generate_stock_advice(
     ma5 = ma10 = ma20 = 0
     ma5_pct = ma10_pct = ma20_pct = 0.0  # 价格偏离 MA 的百分比
     trend = "震荡"
+    trend_display = "震荡"
     trend_score = 0.0
 
     if kline_data and len(kline_data) >= 3:
@@ -594,19 +595,36 @@ def generate_stock_advice(
             trend = "均线交织"
             trend_score = 0.0
 
-        # 价格偏离 MA 过大时预警
+        # 价格偏离 MA 过大时预警（仅修改显示用 trend_display，不影响 trend 比较）
+        trend_display = trend
         if abs(ma5_pct) > 8:
-            trend += " (偏离MA5 %.1f%%)" % ma5_pct
+            trend_display += " (偏离MA5 %.1f%%)" % ma5_pct
+        else:
+            trend_display = trend
 
-    # ── 目标价 / 止损价（综合 MA 支撑阻力 + Pivot + 波动率）──
-    # 默认值：退化为简单的 pivot 百分比
+    # ── ATR（平均真实波幅）计算 ──
+    atr = 0.0
+    if kline_data and len(kline_data) >= 14:
+        tr_values = []
+        for i in range(-1, -15, -1):
+            curr = kline_data[i]
+            prev = kline_data[i - 1] if i - 1 >= -len(kline_data) else curr
+            tr = max(curr["high"] - curr["low"],
+                     abs(curr["high"] - prev["close"]),
+                     abs(curr["low"] - prev["close"]))
+            tr_values.append(tr)
+        atr = sum(tr_values) / len(tr_values)
+    elif kline_data and len(kline_data) >= 5:
+        tr_values = [k["high"] - k["low"] for k in kline_data[-5:] if k["high"] and k["low"]]
+        atr = sum(tr_values) / len(tr_values) if tr_values else high - low
+
+    # ── 目标价 / 止损价（趋势 + ATR + 百分比）──
     target_price = round(max(price * 1.03, 2 * pivot - low), 2)
     stop_loss = round(min(price * 0.97, 2 * pivot - high), 2)
 
     if kline_data and len(kline_data) >= 5:
         closes = [k["close"] for k in kline_data[-10:] if k["close"] > 0]
         if len(closes) >= 5:
-            # 近期波动率 = 区间振幅百分比
             range_pct = (max(closes) - min(closes)) / min(closes) * 100 if min(closes) else 5.0
             vola = min(max(range_pct, 1.0), 10.0)
         else:
@@ -614,34 +632,41 @@ def generate_stock_advice(
 
         # === 根据趋势设定目标/止损 ===
         if trend == "多头排列" and ma5 and ma20:
-            # 上涨趋势：目标在 MA20 之上延伸，止损在 MA5 之下
-            target_price = round(max(ma20 * 1.02, price + (ma20 - ma10) * 0.3), 2)
-            stop_loss = round(min(ma5 * 0.98, low * 0.97), 2)
+            # 计算突破强度：价格偏离 MA20 的百分比
+            ma20_pct = (price - ma20) / ma20 * 100
+            if ma20_pct > 20:
+                # 强势突破：用 ATR 倍数投影，目标=现价+ATR×2，止损在 MA5 下方
+                target_price = round(max(price + atr * 2, price * 1.10), 2)
+                stop_loss = round(min(ma5 * 0.95, price - atr * 0.8), 2)
+            elif ma20_pct > 10:
+                # 中等突破：目标=现价+ATR×1.5
+                target_price = round(max(price + atr * 1.5, price * 1.06), 2)
+                stop_loss = round(min(ma5 * 0.97, price - atr * 0.5), 2)
+            else:
+                # 正常上涨：MA 延伸 + ATR
+                target_price = round(max(ma20 * 1.05 + atr, price + (ma20 - ma10) * 0.5), 2)
+                stop_loss = round(min(ma5 * 0.98, low * 0.97), 2)
         elif trend == "空头排列" and ma5 and ma10:
-            # 下跌趋势：目标看 MA5 或 MA10（反弹压力），止损在今日高之上
-            target_price = round(min(ma10, ma5) * 0.995, 2)  # 反弹到 5/10 日线附近
-            stop_loss = round(high * 1.01, 2)  # 突破今日高止损
+            target_price = round(min(ma10, ma5) * 0.995, 2)
+            stop_loss = round(high * 1.01, 2)
         elif trend == "短线偏多" and ma5 and ma10:
-            # 短线偏多：目标 MA10，止损 MA5
             target_price = round(ma10 * 0.995, 2)
             stop_loss = round(min(ma5 * 0.98, low * 0.98), 2)
         elif trend == "短线偏空" and ma5:
-            # 短线偏空：反弹看 MA5，止损在今日高
             target_price = round(ma5 * 0.995, 2)
             stop_loss = round(high * 1.01, 2)
         elif trend == "均线收敛" and ma5 and ma20:
             target_price = round(ma20 * 1.01, 2)
             stop_loss = round(min(ma5 * 0.97, low * 0.97), 2)
         else:
-            # 震荡市：用波动率设定合理目标/止损
             target_price = round(price * (1 + vola / 100), 2)
             stop_loss = round(price * (1 - vola / 100), 2)
 
         # 合理化检查
         if target_price <= price:
-            target_price = round(price * max(1.02, 1 + vola / 200), 2)
+            target_price = round(price * max(1.03, 1 + vola / 100), 2)
         if stop_loss >= price:
-            stop_loss = round(price * min(0.98, 1 - vola / 200), 2)
+            stop_loss = round(price * min(0.97, 1 - vola / 200), 2)
 
     # ── 3. 成交量分析 ──
     vol_analysis = ""
@@ -785,7 +810,7 @@ def generate_stock_advice(
         "index_pct": index_pct,
         "relative_strength": round(relative_strength, 2),
         # 新增字段
-        "trend": trend,
+        "trend": trend_display,
         "ma5": ma5,
         "ma10": ma10,
         "ma20": ma20,
