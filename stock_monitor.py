@@ -341,6 +341,117 @@ def fetch_stock_announcements(code: str, limit: int = 5) -> list:
         return []
 
 
+# ── 概念板块与同业股票 ──────────────────────────────────────────────────
+
+BOARDS_CACHE: dict = {}
+PEERS_CACHE: dict = {}
+
+
+def _em_code(code: str) -> str:
+    """转为东方财富格式的代码，如 SH600519 / SZ000858。"""
+    key = stock_code_key(code)
+    if key.startswith("sh"):
+        return "SH" + key[2:]
+    return "SZ" + key[2:]
+
+
+def fetch_stock_boards(code: str) -> list:
+    """从东方财富 F10 获取股票所属概念板块列表。"""
+    if code in BOARDS_CACHE:
+        return BOARDS_CACHE[code]
+
+    em_c = _em_code(code)
+    url = "http://emweb.securities.eastmoney.com/PC_HSF10/CoreConception/PageAjax?code=%s" % em_c
+    try:
+        resp = requests.get(
+            url, timeout=8,
+            headers={"User-Agent": "Mozilla/5.0", "Referer": "http://emweb.securities.eastmoney.com/"},
+        )
+        data = resp.json()
+        boards = []
+        seen = set()
+        for item in data.get("ssbk", []):
+            name = (item.get("BOARD_NAME") or "").strip()
+            rank = item.get("BOARD_RANK", 99)
+            if name and name not in seen and rank <= 15:
+                seen.add(name)
+                boards.append({"name": name, "rank": rank})
+        boards.sort(key=lambda x: x["rank"])
+        BOARDS_CACHE[code] = boards
+        return boards
+    except Exception as e:
+        log.debug("获取板块失败 [%s]: %s", code, e)
+        return []
+
+
+def fetch_industry_peers(code: str, limit: int = 6) -> list:
+    """从东方财富获取同行业对标股票。"""
+    if code in PEERS_CACHE:
+        return PEERS_CACHE[code]
+
+    em_c = _em_code(code)
+    url = "http://emweb.securities.eastmoney.com/PC_HSF10/IndustryAnalysis/PageAjax?code=%s" % em_c
+    try:
+        resp = requests.get(
+            url, timeout=8,
+            headers={"User-Agent": "Mozilla/5.0", "Referer": "http://emweb.securities.eastmoney.com/"},
+        )
+        data = resp.json()
+        peers = []
+        seen = set()
+        for item in data.get("czxbj", []):
+            p_code = (item.get("CORRE_SECURITY_CODE") or "").strip()
+            p_name = (item.get("CORRE_SECURITY_NAME") or "").strip()
+            if p_code and p_name and p_code != code and p_code not in seen:
+                if "行业中值" not in p_name and "行业平均" not in p_name:
+                    seen.add(p_code)
+                    peers.append({"code": p_code, "name": p_name})
+        PEERS_CACHE[code] = peers[:limit]
+        return peers[:limit]
+    except Exception as e:
+        log.debug("获取同业失败 [%s]: %s", code, e)
+        return []
+
+
+def fetch_peer_prices(peers: list) -> list:
+    """批量获取同业股票的实时行情。"""
+    return [fetch_realtime_price(p["code"]) for p in peers]
+
+
+def format_sector_section(code: str) -> str:
+    """格式化板块和同业股票信息。"""
+    parts = []
+    parts.append("  " + "-" * 56)
+
+    boards = fetch_stock_boards(code)
+    if boards:
+        names = [b["name"] for b in boards[:8]]
+        parts.append("    \033[36m概念板块\033[0m: %s" % " | ".join(names))
+
+    peers = fetch_industry_peers(code)
+    if peers:
+        parts.append("    \033[35m同业股票\033[0m:")
+        peer_data = fetch_peer_prices(peers)
+        for i, p in enumerate(peers):
+            pd = peer_data[i] if i < len(peer_data) else None
+            if pd:
+                chg, pct = pd["change"], pd["percent"]
+                prefix = "+" if chg >= 0 else ""
+                _c = "\033[91m" if chg > 0 else ("\033[92m" if chg < 0 else "\033[0m")
+                chg_str = "%s%.2f" % (prefix, chg)
+                parts.append(
+                    "      %s(%s) \033[1m%.2f\033[0m %s%s(%.2f%%)\033[0m"
+                    % (pd["name"], pd["code"], pd["price"], _c, chg_str, pct)
+                )
+            else:
+                parts.append("      %s(%s) --" % (p["name"], p["code"]))
+
+    if not boards and not peers:
+        return ""
+
+    return "\n".join(parts)
+
+
 def generate_stock_advice(
     stock_data: dict,
     index_data: Optional[dict] = None,
@@ -852,6 +963,14 @@ def monitor_loop(
                     print(format_advice_section(advice))
                 except Exception as e:
                     log.debug("生成投资建议失败: %s", e)
+
+            # 板块信息与同业股票
+            try:
+                sector_block = format_sector_section(code)
+                if sector_block:
+                    print(sector_block)
+            except Exception as e:
+                log.debug("获取板块信息失败: %s", e)
 
             # 检查价格目标
             for target in targets:
