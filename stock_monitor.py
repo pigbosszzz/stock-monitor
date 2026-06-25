@@ -363,11 +363,14 @@ _BOARD_BLACKLIST = {
     "最近多板", "昨日涨停", "昨日涨停_含一字", "昨日高振幅",
     "标准普尔", "富时罗素", "MSCI中国", "证金持股", "社保重仓",
     "深股通", "沪股通", "深证100", "上证180", "上证380", "沪深300",
+    "HS300", "上证50", "央视50", "中证500", "中证1000",
     "东方财富热股", "茅指数", "宁组合", "行业龙头",
     "破净", "破发", "低价股", "高市盈率", "低市盈率",
     "活跃股", "融资融券", "预盈预增", "预亏预减",
-    "机构重仓", "基金重仓", "QFII重仓",
+    "机构重仓", "基金重仓", "QFII重仓", "消费风格", "周期风格", "成长风格",
 }
+
+_BOARD_BLACKLIST_SUFFIX = {"板块"}  # 地域板块（江苏板块、贵州板块等）
 
 
 def _is_generic_board(name: str) -> bool:
@@ -376,6 +379,8 @@ def _is_generic_board(name: str) -> bool:
     if not name:
         return True
     if any(kw in name for kw in _BOARD_BLACKLIST):
+        return True
+    if any(suf in name for suf in _BOARD_BLACKLIST_SUFFIX):
         return True
     # 过滤纯数字/符号类名称
     if all(c in "0123456789ⅢⅡⅠ" for c in name):
@@ -457,8 +462,13 @@ def format_sector_section(code: str) -> str:
 
     boards = fetch_stock_boards(code)
     if boards:
-        names = [b["name"] for b in boards]
-        parts.append("    \033[36m概念板块\033[0m: %s" % " | ".join(names))
+        # rank=1 的为行业分类，其余均为概念板块
+        industry = boards[0]["name"]
+        concepts = [b["name"] for b in boards[1:]]
+        if concepts:
+            parts.append("    \033[36m行业\033[0m: %s    \033[36m概念\033[0m: %s" % (industry, " | ".join(concepts[:6])))
+        else:
+            parts.append("    \033[36m行业\033[0m: %s" % industry)
 
     peers = fetch_industry_peers(code)
     if peers:
