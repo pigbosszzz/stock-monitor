@@ -12,9 +12,9 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .change{font-size:15px;font-weight:600}
 .up{color:#f85149}
 .down{color:#3fb950}
-.stat-val.up{color:#f85149}
-.stat-val.down{color:#3fb950}
-.stat-val.gray{color:#8b949e}
+.stat-val.up{color:#f85149 !important}
+.stat-val.down{color:#3fb950 !important}
+.stat-val.gray{color:#8b949e !important}
 
 /* 价格区间条 */
 .price-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
@@ -49,8 +49,8 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .warn{color:#d2991d;font-size:12px;margin-top:6px;padding:4px 8px;background:rgba(210,153,34,0.08);border-radius:4px}
 .t{color:#f85149}
 .s{color:#3fb950}
-.stat-val.t{color:#f85149}
-.stat-val.s{color:#3fb950}
+.stat-val.t{color:#f85149 !important}
+.stat-val.s{color:#3fb950 !important}
 .gray{color:#8b949e}
 .footer{text-align:center;color:#484f58;font-size:11px;margin-top:30px;padding:12px}
 .market-section{margin-bottom:24px}
