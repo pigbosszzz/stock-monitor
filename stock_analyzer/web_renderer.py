@@ -77,15 +77,14 @@ def render(al, mr=None):
         B.append("</div>")
 
         # -- 持仓 --
-        if r.cost_price and r.shares:
-            pc2 = "up" if r.profit_loss>0 else "down"
-            B.append("<div class=section-title>持仓</div>")
-            B.append("<div class=stat-row>")
-            B.append("<div class=stat><div class=stat-label>成本</div><div class=stat-val>"+str(r.cost_price)+"</div></div>")
-            B.append("<div class=stat><div class=stat-label>持仓</div><div class=stat-val>"+str(r.shares)+"股</div></div>")
-            B.append("<div class=stat><div class=stat-label>市值</div><div class=stat-val>"+str(int(r.market_value))+"</div></div>")
-            B.append("<div class=stat><div class=stat-label>盈亏</div><div class=\"stat-val "+pc2+"\">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</div></div>")
-            B.append("</div>")
+        pc2 = "up" if r.profit_loss>0 else "down"
+        B.append("<div class=section-title>持仓</div>")
+        B.append("<div class=stat-row>")
+        B.append("<div class=stat><div class=stat-label>成本</div><div class=stat-val>"+(str(r.cost_price) if r.cost_price else "-")+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>持仓</div><div class=stat-val>"+(str(r.shares)+"股" if r.shares else "-")+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>市值</div><div class=stat-val>"+(str(int(r.market_value)) if r.market_value else "-")+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>盈亏</div><div class=\"stat-val "+pc2+"\">"+(str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")" if r.cost_price else "-")+"</div></div>")
+        B.append("</div>")
 
         # -- 参考价位 --
         B.append("<div class=section-title>参考价位</div>")
