@@ -122,8 +122,7 @@ def main():
                 else:
                     print(f"  [!] {r.code}: 获取失败")
             else:
-                peer_qs = peer_quotes_map.get(r.code, [])
-                print(format_analysis(r, show_detail=not args.no_advice, peer_quotes=peer_qs))
+                print(format_analysis(r, show_detail=not args.no_advice))
                 ir = analyzer.get_industry_rank(r.code, r.boards)
                 if ir.industry_name:
                     print(format_industry_rank(ir))
