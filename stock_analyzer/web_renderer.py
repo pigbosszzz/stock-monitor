@@ -53,10 +53,13 @@ def render(al, mr=None):
         if r.cost_price and r.shares:
             pc2 = "up" if r.profit_loss>0 else "down"
             L.append("<div class=holding>")
-            L.append("<span class=label>持仓盈亏</span> ")
-            L.append("成本 "+str(r.cost_price)+" x "+str(r.shares)+"股 = 市值 "+str(int(r.market_value))+" | ")
-            L.append("<span class="+pc2+">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</span></div>")
-
+            L.append("<div class=holding-title>持仓明细</div>")
+            L.append("<div class=holding-grid>")
+            L.append("<div>成本</div><div>"+str(r.cost_price)+"</div>")
+            L.append("<div>持仓</div><div>"+str(r.shares)+"股</div>")
+            L.append("<div>市值</div><div>"+str(int(r.market_value))+"</div>")
+            L.append("<div>盈亏</div><div><span class="+pc2+">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</span></div>")
+            L.append("</div></div>")
         L.append("<div class=target-row><span class=t>目标价 "+str(r.target_price)+"</span>  <span class=s>止损价 "+str(r.stop_loss)+"</span></div>")
 
         L.append("<div class=\"signal "+sc+"\">"+r.signal+"</div>")
