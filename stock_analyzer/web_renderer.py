@@ -63,8 +63,8 @@ def render(al, mr=None):
         B.append("<div class=stat-row>")
         B.append("<div class=stat><div class=stat-label>开盘</div><div class=stat-val>"+str(q.open)+"</div></div>")
         B.append("<div class=stat><div class=stat-label>昨收</div><div class=stat-val>"+str(q.prev_close)+"</div></div>")
-        B.append("<div class=stat><div class=stat-label>最高</div><div class=stat-val up>"+str(q.high)+"</div></div>")
-        B.append("<div class=stat><div class=stat-label>最低</div><div class=stat-val down>"+str(q.low)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>最高</div><div class=stat-val style=color:#f85149>"+str(q.high)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>最低</div><div class=stat-val style=color:#3fb950>"+str(q.low)+"</div></div>")
         B.append("</div>")
 
         # -- 成交量行 --
@@ -89,8 +89,8 @@ def render(al, mr=None):
         # -- 参考价位 --
         B.append("<div class=section-title>参考价位</div>")
         B.append("<div class=stat-row>")
-        B.append("<div class=stat><div class=stat-label>目标价</div><div class=stat-val t>"+str(r.target_price)+"</div></div>")
-        B.append("<div class=stat><div class=stat-label>止损价</div><div class=stat-val s>"+str(r.stop_loss)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>目标价</div><div class=stat-val style=color:#f85149>"+str(r.target_price)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>止损价</div><div class=stat-val style=color:#3fb950>"+str(r.stop_loss)+"</div></div>")
         B.append("<div class=stat><div class=stat-label>枢轴</div><div class=stat-val gray>"+str(r.pivot)+"</div></div>")
         B.append("<div class=stat><div class=stat-label>相对强度</div><div class=\"stat-val "+pc+"\">"+fc(r.relative_strength)+"</div></div>")
         B.append("</div>")
