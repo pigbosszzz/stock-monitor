@@ -13,6 +13,7 @@ from stock_analyzer.models import (
 from stock_analyzer.config import AppConfig
 from stock_analyzer.sector import SectorAnalyzer
 from stock_analyzer.industry_rank import IndustryRanker, IndustryRank
+from stock_analyzer.backtest import BacktestEngine, BacktestResult
 
 
 class StockAnalyzer:
@@ -25,6 +26,7 @@ class StockAnalyzer:
         self.em = eastmoney or EastMoneyFetcher()
         self.sector = SectorAnalyzer(self.em)
         self.industry_ranker = IndustryRanker(self.tencent)
+        self.backtester = BacktestEngine()
 
     def fetch_all(self, code: str, sources=None):
         sources = sources or self.cfg.analysis.use_sources
@@ -275,6 +277,9 @@ class StockAnalyzer:
             r._industry_rank = self.get_industry_rank(r.code, r.boards)
         html = render(analyses, market_report)
         return save_and_open(html, output)
+
+    def run_backtest(self, code: str, days: int = 90) -> BacktestResult:
+        return self.backtester.backtest(code, days)
 
     def analyze_batch(self, codes, sources=None):
         results = []
