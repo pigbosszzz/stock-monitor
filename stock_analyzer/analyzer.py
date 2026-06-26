@@ -269,6 +269,13 @@ class StockAnalyzer:
     def get_industry_rank(self, code, boards) -> IndustryRank:
         return self.industry_ranker.get_rank(code, boards)
 
+    def render_web(self, analyses, market_report=None, output="stock_dashboard.html"):
+        from stock_analyzer.web_renderer import render, save_and_open
+        for r in analyses:
+            r._industry_rank = self.get_industry_rank(r.code, r.boards)
+        html = render(analyses, market_report)
+        return save_and_open(html, output)
+
     def analyze_batch(self, codes, sources=None):
         results = []
         for code in codes:

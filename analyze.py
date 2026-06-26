@@ -35,6 +35,8 @@ def main():
                         help="显示大盘分析")
     parser.add_argument("--market-only", action="store_true",
                         help="仅显示大盘分析")
+    parser.add_argument("--web", action="store_true",
+                        help="以网页形式展示")
     args = parser.parse_args()
 
     import logging
@@ -74,6 +76,18 @@ def main():
     analyzer = StockAnalyzer(cfg=cfg, tencent=tf, sina=sf, eastmoney=em)
 
     if not args.market_only:
+        if args.web:
+            results = []
+            for code in codes:
+                entry = entries.get(code.strip()) if isinstance(entries, dict) else None
+                cp = entry.cost_price or 0 if entry else 0
+                sh = entry.shares or 0 if entry else 0
+                r = analyzer.analyze(code.strip(), sources=sources, cost_price=cp, shares=sh)
+                results.append(r)
+            analyzer.render_web(results, market_report)
+            print("已打开网页看板: stock_dashboard.html")
+            return
+
         if not args.market:
             print("╔" + "═" * 58 + "╗")
             print("║  A 股多源投资分析" + " " * 42 + "║")
