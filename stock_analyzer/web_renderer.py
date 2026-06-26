@@ -77,7 +77,7 @@ def render(al, mr=None):
         B.append("</div>")
 
         # -- 持仓 --
-        pc2 = "up" if r.profit_loss>0 else "down"
+        pc2 = "up" if r.profit_loss>0 else ("down" if r.profit_loss<0 else "gray")
         B.append("<div class=section-title>持仓</div>")
         B.append("<div class=stat-row>")
         B.append("<div class=stat><div class=stat-label>成本</div><div class=stat-val>"+(str(r.cost_price) if r.cost_price else "-")+"</div></div>")
