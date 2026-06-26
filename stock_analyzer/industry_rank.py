@@ -25,6 +25,7 @@ class IndustryRank:
     avg_change: float = 0     # 行业平均涨跌幅
     stock_change: float = 0   # 本股涨跌幅
     peer_count: int = 0       # 同行数量
+    ranked_stocks: list = field(default_factory=list)  # 所有排名股票
 
 
 class IndustryRanker:
@@ -84,6 +85,10 @@ class IndustryRanker:
                 )
 
             # 找到本股位置
+            rank.ranked_stocks = [
+                {"code": q.code, "name": q.name, "percent": q.percent}
+                for q in sorted_peers
+            ]
             for i, q in enumerate(sorted_peers):
                 if q.code == code:
                     rank.price_rank = i + 1

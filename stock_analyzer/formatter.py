@@ -277,32 +277,27 @@ def format_industry_rank(rank) -> str:
     lines = []
     lines.append(f"    {Color.MAGENTA}行业排名{Color.RESET} — {rank.industry_name}行业")
 
-    # 基本面
     items = []
-    if rank.cap_rank:
-        items.append(f"市值第{rank.cap_rank}名")
-    if rank.revenue_rank:
-        items.append(f"营收第{rank.revenue_rank}名")
-    if rank.profit_rank:
-        items.append(f"净利第{rank.profit_rank}名")
+    if rank.cap_rank: items.append(f"市值第{rank.cap_rank}名")
+    if rank.revenue_rank: items.append(f"营收第{rank.revenue_rank}名")
+    if rank.profit_rank: items.append(f"净利第{rank.profit_rank}名")
     if items:
         lines.append(f"    {Color.GRAY}{' | '.join(items)}{Color.RESET}")
 
-    # 今日价格排名
-    if rank.price_rank > 0:
-        pct = rank.stock_change
-        color = Color.RED if pct > 0 else (Color.GREEN if pct < 0 else "")
-        prefix = "+" if pct >= 0 else ""
-        vs = "跑赢" if pct > rank.avg_change else ("跑输" if pct < rank.avg_change else "持平")
-        lines.append(
-            f"    今日涨幅: 第{rank.price_rank}/{rank.price_rank_total}名  "
-            f"{color}{prefix}{pct:.2f}%{Color.RESET}  "
-            f"({vs}行业均{rank.avg_change:+.2f}%)"
-        )
+    if rank.price_rank > 0 and rank.ranked_stocks:
+        lines.append(f"    今日涨幅排行:")
+        for i, s in enumerate(rank.ranked_stocks):
+            marker = " ←" if s["code"] in ("000725", "600183", "600176") else ""
+            color = Color.RED if s["percent"] > 0 else (Color.GREEN if s["percent"] < 0 else "")
+            prefix = "+" if s["percent"] >= 0 else ""
+            lines.append(
+                f"      {i+1:>2d}. {s['name']:<6s}({s['code']})  "
+                f"{color}{prefix}{s['percent']:.2f}%{Color.RESET}{marker}"
+            )
+        vs = "跑赢" if rank.stock_change > rank.avg_change else ("跑输" if rank.stock_change < rank.avg_change else "持平")
+        lines.append(f"    {Color.GRAY}均{rank.avg_change:+.2f}% | 你{vs}行业平均{Color.RESET}")
 
     return "\n".join(lines)
-
-
 def format_market_context(context: dict, stock_name: str) -> str:
     if not context: return ""
     idx_pct = context.get("sh_index_pct", 0)
