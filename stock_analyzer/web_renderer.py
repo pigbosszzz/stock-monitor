@@ -57,13 +57,13 @@ def render(al, mr=None):
             L.append("成本 "+str(r.cost_price)+" x "+str(r.shares)+"股 = 市值 "+str(int(r.market_value))+" | ")
             L.append("<span class="+pc2+">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</span></div>")
 
+        L.append("<div class=target-row><span class=t>目标价 "+str(r.target_price)+"</span>  <span class=s>止损价 "+str(r.stop_loss)+"</span></div>")
+
         L.append("<div class=\"signal "+sc+"\">"+r.signal+"</div>")
         L.append("<div class=detail>评分: "+str(r.score)+" | "+r.detail+"</div>")
 
         if r.ma5:
             L.append("<div class=ma-row>MA5:"+str(r.ma5)+"("+fc(r.ma5_pct)+") MA10:"+str(r.ma10)+"("+fc(r.ma10_pct)+") MA20:"+str(r.ma20)+"("+fc(r.ma20_pct)+") | "+r.trend+"</div>")
-
-        L.append("<div class=target-row><span class=t>目标价 "+str(r.target_price)+"</span>  <span class=s>止损价 "+str(r.stop_loss)+"</span></div>")
 
         ir = getattr(r, "_industry_rank", None)
         if ir and ir.ranked_stocks:
