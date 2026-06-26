@@ -12,6 +12,9 @@ body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFo
 .change{font-size:15px;font-weight:600}
 .up{color:#f85149}
 .down{color:#3fb950}
+.stat-val.up{color:#f85149}
+.stat-val.down{color:#3fb950}
+.stat-val.gray{color:#8b949e}
 
 /* 价格区间条 */
 .price-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
