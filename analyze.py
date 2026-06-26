@@ -12,9 +12,9 @@ from stock_analyzer.config import load_config
 from stock_analyzer.fetchers.tencent import TencentFetcher
 from stock_analyzer.fetchers.sina import SinaFetcher
 from stock_analyzer.fetchers.eastmoney import EastMoneyFetcher
-from stock_analyzer.formatter import format_industry_rank,
-    
+from stock_analyzer.formatter import (
     format_analysis, format_market_report, format_market_context, format_board_rankings,
+    format_industry_rank,
 )
 from stock_analyzer.market import MarketAnalyzer
 
