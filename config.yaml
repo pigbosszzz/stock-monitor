@@ -1,0 +1,68 @@
+# 股票分析工具 — 主配置文件
+
+analysis:
+  # K线数据天数（用于MA计算和技术分析）
+  kline_days: 30
+
+  # 启用的数据源（按优先级）
+  use_sources:
+    - tencent
+    - sina
+    - eastmoney
+
+  # 显示选项
+  show_boards: true
+  show_peers: true
+  show_announcements: true
+  show_advice: true
+
+  # 每个板块最多显示成分股数
+  max_board_constituents: 6
+
+# ── 技术分析参数 ──
+technical:
+  # ATR 止损倍数（不同趋势）
+  atr_stop_multiplier:
+    bull: 3.0          # 多头排列：吊灯止损（14日最高 - N×ATR）
+    bear: 1.5          # 空头排列：紧止损
+    neutral: 2.0       # 震荡/偏多：标准止损
+    bearish: 1.5       # 偏空
+    convergence: 1.8   # 均线收敛
+
+  # 斐波那契目标
+  fib_target:
+    uptrend: 1.272     # 上涨趋势扩展倍数
+    downtrend: 0.382   # 下跌趋势反弹倍数
+
+  # 评分权重
+  scoring:
+    trend_long: 1.5         # 多头排列加分
+    trend_short: -1.5       # 空头排列扣分
+    trend_weak_long: 0.8    # 短线偏多加
+    trend_weak_short: -0.8  # 短线偏空扣
+    vol_surge_bull: 0.5     # 放量上涨加分
+    vol_surge_bear: -0.8    # 放量下跌扣分
+    vol_drop: -0.2          # 缩量扣分
+    relative_max: 2.0       # 相对大盘最大分
+    pct_max: 1.5            # 涨跌幅最大分
+    score_max: 5.0          # 综合评分上限
+    score_min: -5.0         # 综合评分下限
+
+  # 预警阈值
+  warnings:
+    price_near_low_ratio: 0.15    # 接近日内低点
+    price_near_high_ratio: 0.15   # 接近日内高点
+    pct_surge: 7.0                # 涨幅过大
+    pct_crash: -7.0               # 跌幅过大
+    ma_deviation: 5.0             # MA偏离百分比
+
+# ── 大盘分析参数 ──
+market:
+  ranking_fetch: 120       # 涨跌榜拉取数量
+  ranking_display: 30      # 涨跌榜显示行数
+  board_display: 8         # 板块排行每板块个股数
+  top_boards: 4            # 显示的板块数
+
+output:
+  color: true
+  compact: false
