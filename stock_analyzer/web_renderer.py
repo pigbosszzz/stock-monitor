@@ -41,7 +41,7 @@ def render(al, mr=None):
     for r in al:
         q = r.quote
         if not q: continue
-        a = "uarr;" if q.percent>0 else ("darr;" if q.percent<0 else "mdash;")
+        a = "uarr" if q.percent>0 else ("darr" if q.percent<0 else "mdash")
         pc = cz(q.percent)
         sc = sg(r.signal)
 
