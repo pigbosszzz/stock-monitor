@@ -7,8 +7,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-import requests
-
 from stock_analyzer.fetchers.tencent import TencentFetcher
 from stock_analyzer.fetchers.eastmoney import EastMoneyFetcher
 

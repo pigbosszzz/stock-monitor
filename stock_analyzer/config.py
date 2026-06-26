@@ -1,8 +1,6 @@
 """
 配置加载 — YAML 配置文件 + 自选股持仓管理。
 """
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Optional
 

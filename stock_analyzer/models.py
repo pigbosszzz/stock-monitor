@@ -1,8 +1,6 @@
 """
 数据模型 — Pydantic 强类型定义，所有 fetcher 和 analyzer 通用。
 """
-from __future__ import annotations
-
 from datetime import date
 from typing import Optional
 

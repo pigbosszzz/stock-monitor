@@ -1,8 +1,6 @@
 """
 工具函数 — 代码转换、格式化等通用逻辑。
 """
-from __future__ import annotations
-
 import datetime
 
 
@@ -33,6 +31,27 @@ def is_trading_time(now: datetime.datetime | None = None) -> bool:
     morning = datetime.time(9, 30) <= t <= datetime.time(11, 30)
     afternoon = datetime.time(13, 0) <= t <= datetime.time(15, 0)
     return morning or afternoon
+
+
+
+def retry(max_attempts=3, delay=1.0):
+    """Retry decorator with exponential backoff for transient failures."""
+    import time
+    import functools
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_err = None
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_err = e
+                    if attempt < max_attempts - 1:
+                        time.sleep(delay * (2 ** attempt))
+            raise last_err
+        return wrapper
+    return decorator
 
 
 def format_amount(amount: float) -> str:

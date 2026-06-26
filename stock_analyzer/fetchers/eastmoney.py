@@ -11,7 +11,7 @@ from typing import Optional
 
 from stock_analyzer.fetchers.base import StockFetcher
 from stock_analyzer.models import BoardInfo, Announcement, PeerStock, StockQuote
-from stock_analyzer.utils import em_code
+from stock_analyzer.utils import retry, em_code
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class EastMoneyFetcher(StockFetcher):
             boards.sort(key=lambda x: x.rank)
             return boards[:max_boards]
         except Exception as e:
-            log.debug("获取板块失败 [%s]: %s", code, e)
+            log.warning("获取板块失败 [%s]: %s", code, e)
             return []
 
     def fetch_announcements(self, code: str, limit: int = 5) -> list[Announcement]:
@@ -89,7 +89,7 @@ class EastMoneyFetcher(StockFetcher):
                     results.append(Announcement(title=title, date=stime))
             return results
         except Exception as e:
-            log.debug("获取公告失败 [%s]: %s", code, e)
+            log.warning("获取公告失败 [%s]: %s", code, e)
             return []
 
     def fetch_peers(self, code: str) -> list[PeerStock]:
@@ -117,7 +117,7 @@ class EastMoneyFetcher(StockFetcher):
                 peers.append(PeerStock(code=p_code, name=p_name))
             return peers[:5]
         except Exception as e:
-            log.debug("获取对标股失败 [%s]: %s", code, e)
+            log.warning("获取对标股失败 [%s]: %s", code, e)
             return []
 
     def fetch_board_constituents(
@@ -146,7 +146,7 @@ class EastMoneyFetcher(StockFetcher):
                 })
             return results
         except Exception as e:
-            log.debug("获取板块成分股失败 [%s]: %s", board_code, e)
+            log.warning("获取板块成分股失败 [%s]: %s", board_code, e)
             return []
 
     @staticmethod

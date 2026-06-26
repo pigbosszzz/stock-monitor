@@ -10,7 +10,7 @@ from typing import Optional
 
 from stock_analyzer.fetchers.base import StockFetcher
 from stock_analyzer.models import StockQuote
-from stock_analyzer.utils import stock_code_key
+from stock_analyzer.utils import retry, stock_code_key
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class TencentFetcher(StockFetcher):
                 source="tencent",
             )
         except Exception as e:
-            log.debug("腾讯行情获取失败 [%s]: %s", code, e)
+            log.warning("腾讯行情获取失败 [%s]: %s", code, e)
             return None
 
     def fetch_quote_batch(self, codes: list[str]) -> list[StockQuote]:

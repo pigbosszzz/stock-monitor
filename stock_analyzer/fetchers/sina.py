@@ -10,7 +10,7 @@ from typing import Optional
 
 from stock_analyzer.fetchers.base import StockFetcher
 from stock_analyzer.models import KLine, StockQuote
-from stock_analyzer.utils import stock_code_key
+from stock_analyzer.utils import retry, stock_code_key
 
 log = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class SinaFetcher(StockFetcher):
             klines.sort(key=lambda x: x.day)
             return klines
         except Exception as e:
-            log.debug("新浪K线获取失败 [%s]: %s", code, e)
+            log.warning("新浪K线获取失败 [%s]: %s", code, e)
             return None
 
     def fetch_quote(self, code: str) -> Optional[StockQuote]:
@@ -95,5 +95,5 @@ class SinaFetcher(StockFetcher):
                 source="sina",
             )
         except Exception as e:
-            log.debug("新浪行情获取失败 [%s]: %s", code, e)
+            log.warning("新浪行情获取失败 [%s]: %s", code, e)
             return None
