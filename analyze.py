@@ -12,7 +12,8 @@ from stock_analyzer.config import load_config
 from stock_analyzer.fetchers.tencent import TencentFetcher
 from stock_analyzer.fetchers.sina import SinaFetcher
 from stock_analyzer.fetchers.eastmoney import EastMoneyFetcher
-from stock_analyzer.formatter import (
+from stock_analyzer.formatter import format_industry_rank,
+    
     format_analysis, format_market_report, format_market_context, format_board_rankings,
 )
 from stock_analyzer.market import MarketAnalyzer
@@ -81,7 +82,7 @@ def main():
         results = []
         peer_quotes_map = {}
         for code in codes:
-                        entry = entries.get(code.strip() if not isinstance(entries, dict) else code.strip())
+            entry = entries.get(code.strip()) if isinstance(entries, dict) else None
             cp = entry.cost_price or 0 if entry else 0
             sh = entry.shares or 0 if entry else 0
             r = analyzer.analyze(code.strip(), sources=sources, cost_price=cp, shares=sh)
@@ -123,6 +124,9 @@ def main():
             else:
                 peer_qs = peer_quotes_map.get(r.code, [])
                 print(format_analysis(r, show_detail=not args.no_advice, peer_quotes=peer_qs))
+                ir = analyzer.get_industry_rank(r.code, r.boards)
+                if ir.industry_name:
+                    print(format_industry_rank(ir))
                 if market_report and ma:
                     ctxs = ma.analyze_with_market(market_report, [r])
                     ctx = ctxs.get(r.code, {})

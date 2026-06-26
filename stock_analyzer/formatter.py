@@ -89,8 +89,6 @@ def format_analysis(result, show_detail: bool = True,
         lines.append(
             f"    成交量: {q.volume:,}手  |  成交额: {_fmt_amount(q.amount)}"
         )
-        if result.data_sources:
-            lines.append(f"    {Color.GRAY}数据来源: {', '.join(result.data_sources)}{Color.RESET}")
 
         # ── 持仓盈亏 ──
         if result.cost_price > 0 and result.shares > 0:
@@ -104,6 +102,8 @@ def format_analysis(result, show_detail: bool = True,
                 f"市值 {Color.BRIGHT}{result.market_value:,.0f}{Color.RESET}  |  "
                 f"{pl_color}{pl_sign}{pl:,.0f}  ({pl_sign}{pl_pct:.2f}%){Color.RESET}"
             )
+
+
     else:
         return f"\n  [!] {result.name} ({result.code}): 数据获取失败"
 
@@ -266,6 +266,40 @@ def format_board_rankings(board_data: dict) -> str:
                 f"  {sc}{arrow} {sp}{s['percent']:.2f}%{Color.RESET}"
             )
         lines.append("")
+    return "\n".join(lines)
+
+
+
+def format_industry_rank(rank) -> str:
+    """格式化行业排名"""
+    if not rank or not rank.industry_name:
+        return ""
+    lines = []
+    lines.append(f"    {Color.MAGENTA}行业排名{Color.RESET} — {rank.industry_name}行业")
+
+    # 基本面
+    items = []
+    if rank.cap_rank:
+        items.append(f"市值第{rank.cap_rank}名")
+    if rank.revenue_rank:
+        items.append(f"营收第{rank.revenue_rank}名")
+    if rank.profit_rank:
+        items.append(f"净利第{rank.profit_rank}名")
+    if items:
+        lines.append(f"    {Color.GRAY}{' | '.join(items)}{Color.RESET}")
+
+    # 今日价格排名
+    if rank.price_rank > 0:
+        pct = rank.stock_change
+        color = Color.RED if pct > 0 else (Color.GREEN if pct < 0 else "")
+        prefix = "+" if pct >= 0 else ""
+        vs = "跑赢" if pct > rank.avg_change else ("跑输" if pct < rank.avg_change else "持平")
+        lines.append(
+            f"    今日涨幅: 第{rank.price_rank}/{rank.price_rank_total}名  "
+            f"{color}{prefix}{pct:.2f}%{Color.RESET}  "
+            f"({vs}行业均{rank.avg_change:+.2f}%)"
+        )
+
     return "\n".join(lines)
 
 

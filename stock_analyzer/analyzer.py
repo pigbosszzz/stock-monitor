@@ -12,6 +12,7 @@ from stock_analyzer.models import (
 )
 from stock_analyzer.config import AppConfig
 from stock_analyzer.sector import SectorAnalyzer
+from stock_analyzer.industry_rank import IndustryRanker, IndustryRank
 
 
 class StockAnalyzer:
@@ -23,6 +24,7 @@ class StockAnalyzer:
         self.sina = sina or SinaFetcher()
         self.em = eastmoney or EastMoneyFetcher()
         self.sector = SectorAnalyzer(self.em)
+        self.industry_ranker = IndustryRanker(self.tencent)
 
     def fetch_all(self, code: str, sources=None):
         sources = sources or self.cfg.analysis.use_sources
@@ -263,6 +265,9 @@ class StockAnalyzer:
             else: tag = "[公告]"
             highlights.append(f"{tag} {s} ({ann.date})")
         analysis.announce_highlights = highlights
+
+    def get_industry_rank(self, code, boards) -> IndustryRank:
+        return self.industry_ranker.get_rank(code, boards)
 
     def analyze_batch(self, codes, sources=None):
         results = []
