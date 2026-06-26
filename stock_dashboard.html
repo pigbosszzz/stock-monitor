@@ -1,57 +1,105 @@
-<html><head><meta charset=UTF-8><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0d1117;color:#c9d1d9;font-family:system-ui,sans-serif;padding:20px}.header{text-align:center;padding:20px 0;border-bottom:1px solid #21262d;margin-bottom:24px}.header h1{font-size:24px;color:#58a6ff}.header .time{color:#8b949e;font-size:13px;margin-top:4px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px}.card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:20px}.card-title{font-size:18px;font-weight:600;margin-bottom:12px}.card-title .code{color:#8b949e;font-size:14px;font-weight:400;margin-left:6px}.price-row{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}.price{font-size:28px;font-weight:700;color:#f0f6fc}.change{font-size:16px;font-weight:600}.up{color:#3fb950}.down{color:#f85149}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px;color:#8b949e;margin:12px 0}.info-grid span{color:#c9d1d9}.holding{background:#1a2332;border-radius:6px;padding:12px 16px;margin:10px 0;font-size:14px}
-.holding-title{color:#58a6ff;font-size:13px;font-weight:600;margin-bottom:8px}
-.holding-grid{display:grid;grid-template-columns:60px 1fr;gap:3px 16px}
-.holding-grid div:nth-child(odd){color:#8b949e}
-.holding-grid div:nth-child(even){color:#f0f6fc;font-weight:500}.holding .label{color:#58a6ff}.signal{display:inline-block;padding:4px 12px;border-radius:4px;font-size:14px;font-weight:600;margin:8px 0}.buy{background:rgba(63,185,80,0.15);color:#3fb950}.sell{background:rgba(248,81,73,0.15);color:#f85149}.hold{background:rgba(210,153,34,0.15);color:#d2991d}.detail{font-size:13px;color:#8b949e;margin-bottom:8px}.ma-row{font-size:12px;color:#8b949e;margin:8px 0}.target-row{display:flex;gap:24px;font-size:15px;margin:10px 0;padding:8px 12px;background:#1a2332;border-radius:6px}.target-row .t{color:#58a6ff;font-weight:600}.target-row .s{color:#f85149;font-weight:600}.section-title{font-size:13px;color:#8b949e;margin-top:14px;margin-bottom:6px;border-top:1px solid #21262d;padding-top:8px}.rank-list{font-size:12px}.rank-list .rank-row{display:flex;justify-content:space-between;padding:2px 0}.rank-list .mine{background:rgba(88,166,255,0.08);border-radius:3px;padding:2px 6px}.rank-list .mine .name{color:#58a6ff}.footer{text-align:center;color:#484f58;font-size:11px;margin-top:30px;padding:12px}.warn{color:#d2991d;font-size:12px;margin-top:4px}.market-section{margin-bottom:24px}.market-grid{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}.index-card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:14px 20px;text-align:center;min-width:160px}.index-card .name{font-size:12px;color:#8b949e}.index-card .val{font-size:22px;font-weight:700;margin:4px 0}</style></head><body>
-<div class=header><h1>股票分析看板</h1><div class=time>2026-06-26 23:54</div></div>
+<html><head><meta charset=UTF-8><style>*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;padding:20px}
+.header{text-align:center;padding:20px 0;border-bottom:1px solid #21262d;margin-bottom:24px}
+.header h1{font-size:24px;color:#58a6ff}
+.header .time{color:#8b949e;font-size:13px;margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:20px}
+.card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:20px}
+.card-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.card-title .code{color:#8b949e;font-size:13px;font-weight:400;margin-left:8px}
+.price-row{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.price{font-size:32px;font-weight:700;color:#f0f6fc;line-height:1}
+.change{font-size:15px;font-weight:600}
+.up{color:#3fb950}
+.down{color:#f85149}
+
+/* 价格区间条 */
+.price-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.bar-label{font-size:11px;color:#8b949e;min-width:48px}
+.bar-label:last-child{text-align:right}
+.bar-track{flex:1;height:4px;background:#21262d;border-radius:2px;position:relative}
+.bar-fill{height:100%;background:linear-gradient(90deg,#f85149,#d2991d,#3fb950);border-radius:2px;transition:width .3s}
+.bar-dot{position:absolute;top:-3px;width:10px;height:10px;background:#f0f6fc;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 4px rgba(240,246,252,.5)}
+
+/* 统计行 */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-bottom:12px}
+.stat{background:#1a2332;border-radius:6px;padding:10px 12px;text-align:center}
+.stat-label{font-size:11px;color:#8b949e;margin-bottom:2px}
+.stat-val{font-size:15px;font-weight:600;color:#f0f6fc}
+.stat-val small{font-size:11px;font-weight:400}
+
+.section-title{color:#58a6ff;font-size:12px;font-weight:600;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #21262d;letter-spacing:0.5px}
+
+/* 信号条 */
+.signal{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-radius:6px;font-size:14px;font-weight:600;margin:12px 0}
+.signal .score{font-size:13px;font-weight:400;opacity:.8}
+.buy{background:rgba(63,185,80,0.12);color:#3fb950}
+.sell{background:rgba(248,81,73,0.12);color:#f85149}
+.hold{background:rgba(210,153,34,0.12);color:#d2991d}
+.detail{font-size:13px;color:#8b949e;margin-bottom:4px}
+
+.rank-list{font-size:13px;max-height:240px;overflow-y:auto}
+.rank-list .rank-row{display:flex;justify-content:space-between;padding:3px 6px;border-radius:3px}
+.rank-list .rank-row:hover{background:rgba(255,255,255,0.03)}
+.rank-list .mine{background:rgba(88,166,255,0.1)}
+.rank-avg{font-size:12px;color:#8b949e;margin-top:6px;text-align:right}
+.warn{color:#d2991d;font-size:12px;margin-top:6px;padding:4px 8px;background:rgba(210,153,34,0.08);border-radius:4px}
+.t{color:#58a6ff}
+.s{color:#f85149}
+.gray{color:#8b949e}
+.footer{text-align:center;color:#484f58;font-size:11px;margin-top:30px;padding:12px}
+.market-section{margin-bottom:24px}
+.market-grid{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.index-card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:14px 20px;text-align:center;min-width:150px}
+.index-card .name{font-size:12px;color:#8b949e}
+.index-card .val{font-size:22px;font-weight:700;margin:4px 0}
+</style></head><body>
+<div class=header><h1>股票分析看板</h1><div class=time>2026-06-26 23:57</div></div>
 <div class=grid>
 <div class=card>
 <div class=card-title>生益科技<span class=code>600183</span></div>
 <div class=price-row><span class=price>178.5</span>
 <span class="change down">&darr;; -8.7 (-4.65%)</span></div>
-<div class=card-section>
-<div class=section-title>行情数据</div>
-<div class=info-grid>
-<div>开盘</div><div><span>182.0</span></div>
-<div>最高</div><div><span style=color:#3fb950>182.3</span></div>
-<div>昨收</div><div><span>187.2</span></div>
-<div>最低</div><div><span style=color:#f85149>171.69</span></div>
-<div>成交量</div><div><span>714770手</span></div>
-<div>成交额</div><div><span>1269776万</span></div>
-</div></div>
-<div class=card-section>
-<div class=section-title>持仓明细</div>
-<div class=info-grid>
-<div>成本</div><div>137.05</div>
-<div>持仓</div><div>100股</div>
-<div>市值</div><div>17850</div>
-<div>盈亏</div><div><span class=up>4145 (+30.24%)</span></div>
-</div></div>
-<div class=card-section>
+<div class=price-bar>
+<span class=bar-label>171.69</span>
+<div class=bar-track><div class=bar-fill style=width:64%></div><div class=bar-dot style=left:64%></div></div>
+<span class=bar-label>182.3</span>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>开盘</div><div class=stat-val>182.0</div></div>
+<div class=stat><div class=stat-label>昨收</div><div class=stat-val>187.2</div></div>
+<div class=stat><div class=stat-label>最高</div><div class=stat-val up>182.3</div></div>
+<div class=stat><div class=stat-label>最低</div><div class=stat-val down>171.69</div></div>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>成交量</div><div class=stat-val>714770手</div></div>
+<div class=stat><div class=stat-label>成交额</div><div class=stat-val>1269776万</div></div>
+<div class=stat><div class=stat-label>量比</div><div class=stat-val>0.8</div></div>
+<div class=stat><div class=stat-label>状态</div><div class=stat-val>量能正常</div></div>
+</div>
+<div class=section-title>持仓</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>成本</div><div class=stat-val>137.05</div></div>
+<div class=stat><div class=stat-label>持仓</div><div class=stat-val>100股</div></div>
+<div class=stat><div class=stat-label>市值</div><div class=stat-val>17850</div></div>
+<div class=stat><div class=stat-label>盈亏</div><div class="stat-val up">4145 (+30.24%)</div></div>
+</div>
 <div class=section-title>参考价位</div>
-<div class=info-grid>
-<div>目标价</div><div><span class=t>209.8</span></div>
-<div>止损价</div><div><span class=s>151.17</span></div>
-<div>枢轴</div><div><span class=gray>177.5</span></div>
-<div>相对强度</div><div><span class=down>-4.65%</span></div>
-</div></div>
-<div class="signal hold">减仓 / 回避</div>
-<div class=detail>评分: -3.2 | 弱势明显，建议减仓，大幅跑输大盘</div>
-<div class=card-section>
-<div class=section-title>均线趋势</div>
-<div class=info-grid>
-<div>MA5</div><div>179.074 <span class=down>-0.30%</span></div>
-<div>MA10</div><div>175.648 <span class=up>+1.60%</span></div>
-<div>MA20</div><div>158.719 <span class=up>+12.50%</span></div>
-<div>趋势</div><div><span>震荡</span></div>
-</div></div>
-<div class=card-section>
-<div class=section-title>成交量</div>
-<div class=info-grid>
-<div>量比</div><div>0.8</div>
-<div>状态</div><div><span>量能正常</span></div>
-</div></div>
-<div class=card-section>
+<div class=stat-row>
+<div class=stat><div class=stat-label>目标价</div><div class=stat-val t>209.8</div></div>
+<div class=stat><div class=stat-label>止损价</div><div class=stat-val s>151.17</div></div>
+<div class=stat><div class=stat-label>枢轴</div><div class=stat-val gray>177.5</div></div>
+<div class=stat><div class=stat-label>相对强度</div><div class="stat-val down">-4.65%</div></div>
+</div>
+<div class="signal sell">减仓 / 回避  <span class=score>评分 -3.2</span></div>
+<div class=detail>弱势明显，建议减仓，大幅跑输大盘</div>
+<div class=section-title>均线</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>MA5</div><div class="stat-val down">179.074 <small>-0.30%</small></div></div>
+<div class=stat><div class=stat-label>MA10</div><div class="stat-val up">175.648 <small>+1.60%</small></div></div>
+<div class=stat><div class=stat-label>MA20</div><div class="stat-val up">158.719 <small>+12.50%</small></div></div>
+<div class=stat><div class=stat-label>趋势</div><div class=stat-val>震荡</div></div>
+</div>
 <div class=section-title>行业排名 - 电子</div>
 <div class=rank-list>
 <div class="rank-row "><span>1. 南亚新材 (688519)</span><span class=up>+7.93%</span></div>
@@ -66,55 +114,52 @@
 <div class="rank-row "><span>10. 宝鼎科技 (002552)</span><span class=down>-8.14%</span></div>
 <div class="rank-row "><span>11. 胜宏科技 (300476)</span><span class=down>-8.74%</span></div>
 </div>
-<div class=rank-avg>行业均-4.03%</div></div>
+<div class=rank-avg>行业均-4.03%</div>
 </div>
 <div class=card>
 <div class=card-title>中国巨石<span class=code>600176</span></div>
 <div class=price-row><span class=price>74.12</span>
 <span class="change up">&uarr;; 3.32 (+4.69%)</span></div>
-<div class=card-section>
-<div class=section-title>行情数据</div>
-<div class=info-grid>
-<div>开盘</div><div><span>71.0</span></div>
-<div>最高</div><div><span style=color:#3fb950>77.2</span></div>
-<div>昨收</div><div><span>70.8</span></div>
-<div>最低</div><div><span style=color:#f85149>70.12</span></div>
-<div>成交量</div><div><span>2270676手</span></div>
-<div>成交额</div><div><span>1662766万</span></div>
-</div></div>
-<div class=card-section>
-<div class=section-title>持仓明细</div>
-<div class=info-grid>
-<div>成本</div><div>70.625</div>
-<div>持仓</div><div>400股</div>
-<div>市值</div><div>29648</div>
-<div>盈亏</div><div><span class=up>1398 (+4.95%)</span></div>
-</div></div>
-<div class=card-section>
+<div class=price-bar>
+<span class=bar-label>70.12</span>
+<div class=bar-track><div class=bar-fill style=width:56%></div><div class=bar-dot style=left:56%></div></div>
+<span class=bar-label>77.2</span>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>开盘</div><div class=stat-val>71.0</div></div>
+<div class=stat><div class=stat-label>昨收</div><div class=stat-val>70.8</div></div>
+<div class=stat><div class=stat-label>最高</div><div class=stat-val up>77.2</div></div>
+<div class=stat><div class=stat-label>最低</div><div class=stat-val down>70.12</div></div>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>成交量</div><div class=stat-val>2270676手</div></div>
+<div class=stat><div class=stat-label>成交额</div><div class=stat-val>1662766万</div></div>
+<div class=stat><div class=stat-label>量比</div><div class=stat-val>1.2</div></div>
+<div class=stat><div class=stat-label>状态</div><div class=stat-val>量能正常</div></div>
+</div>
+<div class=section-title>持仓</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>成本</div><div class=stat-val>70.625</div></div>
+<div class=stat><div class=stat-label>持仓</div><div class=stat-val>400股</div></div>
+<div class=stat><div class=stat-label>市值</div><div class=stat-val>29648</div></div>
+<div class=stat><div class=stat-label>盈亏</div><div class="stat-val up">1398 (+4.95%)</div></div>
+</div>
 <div class=section-title>参考价位</div>
-<div class=info-grid>
-<div>目标价</div><div><span class=t>88.92</span></div>
-<div>止损价</div><div><span class=s>63.43</span></div>
-<div>枢轴</div><div><span class=gray>73.81</span></div>
-<div>相对强度</div><div><span class=up>+4.69%</span></div>
-</div></div>
-<div class="signal hold">买入 / 加仓</div>
-<div class=detail>评分: 5.0 | 强势上涨，可考虑加仓，明显跑赢大盘</div>
-<div class=card-section>
-<div class=section-title>均线趋势</div>
-<div class=info-grid>
-<div>MA5</div><div>65.41 <span class=up>+13.30%</span></div>
-<div>MA10</div><div>57.217 <span class=up>+29.50%</span></div>
-<div>MA20</div><div>47.994 <span class=up>+54.40%</span></div>
-<div>趋势</div><div><span>多头排列</span></div>
-</div></div>
-<div class=card-section>
-<div class=section-title>成交量</div>
-<div class=info-grid>
-<div>量比</div><div>1.2</div>
-<div>状态</div><div><span>量能正常</span></div>
-</div></div>
-<div class=card-section>
+<div class=stat-row>
+<div class=stat><div class=stat-label>目标价</div><div class=stat-val t>88.92</div></div>
+<div class=stat><div class=stat-label>止损价</div><div class=stat-val s>63.43</div></div>
+<div class=stat><div class=stat-label>枢轴</div><div class=stat-val gray>73.81</div></div>
+<div class=stat><div class=stat-label>相对强度</div><div class="stat-val up">+4.69%</div></div>
+</div>
+<div class="signal buy">买入 / 加仓  <span class=score>评分 5.0</span></div>
+<div class=detail>强势上涨，可考虑加仓，明显跑赢大盘</div>
+<div class=section-title>均线</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>MA5</div><div class="stat-val up">65.41 <small>+13.30%</small></div></div>
+<div class=stat><div class=stat-label>MA10</div><div class="stat-val up">57.217 <small>+29.50%</small></div></div>
+<div class=stat><div class=stat-label>MA20</div><div class="stat-val up">47.994 <small>+54.40%</small></div></div>
+<div class=stat><div class=stat-label>趋势</div><div class=stat-val>多头排列</div></div>
+</div>
 <div class=section-title>行业排名 - 建筑材料</div>
 <div class=rank-list>
 <div class="rank-row "><span>1. 国际复材 (301526)</span><span class=up>+9.17%</span></div>
@@ -129,50 +174,46 @@
 <div class="rank-row "><span>10. 九鼎新材 (002201)</span><span class=down>-2.44%</span></div>
 <div class="rank-row "><span>11. 三峡新材 (600293)</span><span class=down>-5.70%</span></div>
 </div>
-<div class=rank-avg>行业均+2.49%</div></div>
-<div class=card-section>
+<div class=rank-avg>行业均+2.49%</div>
 <div class=warn>偏离MA5 +13.3%</div>
-</div>
 </div>
 <div class=card>
 <div class=card-title>京东方Ａ<span class=code>000725</span></div>
 <div class=price-row><span class=price>7.79</span>
 <span class="change up">&uarr;; 0.27 (+3.59%)</span></div>
-<div class=card-section>
-<div class=section-title>行情数据</div>
-<div class=info-grid>
-<div>开盘</div><div><span>7.5</span></div>
-<div>最高</div><div><span style=color:#3fb950>8.24</span></div>
-<div>昨收</div><div><span>7.52</span></div>
-<div>最低</div><div><span style=color:#f85149>7.36</span></div>
-<div>成交量</div><div><span>45251769手</span></div>
-<div>成交额</div><div><span>3567668万</span></div>
-</div></div>
-<div class=card-section>
+<div class=price-bar>
+<span class=bar-label>7.36</span>
+<div class=bar-track><div class=bar-fill style=width:48%></div><div class=bar-dot style=left:48%></div></div>
+<span class=bar-label>8.24</span>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>开盘</div><div class=stat-val>7.5</div></div>
+<div class=stat><div class=stat-label>昨收</div><div class=stat-val>7.52</div></div>
+<div class=stat><div class=stat-label>最高</div><div class=stat-val up>8.24</div></div>
+<div class=stat><div class=stat-label>最低</div><div class=stat-val down>7.36</div></div>
+</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>成交量</div><div class=stat-val>45251769手</div></div>
+<div class=stat><div class=stat-label>成交额</div><div class=stat-val>3567668万</div></div>
+<div class=stat><div class=stat-label>量比</div><div class=stat-val>1.3</div></div>
+<div class=stat><div class=stat-label>状态</div><div class=stat-val>量能正常</div></div>
+</div>
 <div class=section-title>参考价位</div>
-<div class=info-grid>
-<div>目标价</div><div><span class=t>9.09</span></div>
-<div>止损价</div><div><span class=s>6.63</span></div>
-<div>枢轴</div><div><span class=gray>7.8</span></div>
-<div>相对强度</div><div><span class=up>+3.59%</span></div>
-</div></div>
-<div class="signal hold">买入 / 加仓</div>
-<div class=detail>评分: 4.5 | 强势上涨，可考虑加仓，明显跑赢大盘</div>
-<div class=card-section>
-<div class=section-title>均线趋势</div>
-<div class=info-grid>
-<div>MA5</div><div>7.216 <span class=up>+8.00%</span></div>
-<div>MA10</div><div>6.693 <span class=up>+16.40%</span></div>
-<div>MA20</div><div>6.286 <span class=up>+23.90%</span></div>
-<div>趋势</div><div><span>多头排列</span></div>
-</div></div>
-<div class=card-section>
-<div class=section-title>成交量</div>
-<div class=info-grid>
-<div>量比</div><div>1.3</div>
-<div>状态</div><div><span>量能正常</span></div>
-</div></div>
-<div class=card-section>
+<div class=stat-row>
+<div class=stat><div class=stat-label>目标价</div><div class=stat-val t>9.09</div></div>
+<div class=stat><div class=stat-label>止损价</div><div class=stat-val s>6.63</div></div>
+<div class=stat><div class=stat-label>枢轴</div><div class=stat-val gray>7.8</div></div>
+<div class=stat><div class=stat-label>相对强度</div><div class="stat-val up">+3.59%</div></div>
+</div>
+<div class="signal buy">买入 / 加仓  <span class=score>评分 4.5</span></div>
+<div class=detail>强势上涨，可考虑加仓，明显跑赢大盘</div>
+<div class=section-title>均线</div>
+<div class=stat-row>
+<div class=stat><div class=stat-label>MA5</div><div class="stat-val up">7.216 <small>+8.00%</small></div></div>
+<div class=stat><div class=stat-label>MA10</div><div class="stat-val up">6.693 <small>+16.40%</small></div></div>
+<div class=stat><div class=stat-label>MA20</div><div class="stat-val up">6.286 <small>+23.90%</small></div></div>
+<div class=stat><div class=stat-label>趋势</div><div class=stat-val>多头排列</div></div>
+</div>
 <div class=section-title>行业排名 - 电子</div>
 <div class=rank-list>
 <div class="rank-row mine"><span>1. 京东方Ａ (000725)</span><span class=up>+3.59%</span></div>
@@ -188,9 +229,7 @@
 <div class="rank-row "><span>11. 深天马Ａ (000050)</span><span class=down>-4.82%</span></div>
 <div class="rank-row "><span>12. 东田微 (301183)</span><span class=down>-6.29%</span></div>
 </div>
-<div class=rank-avg>行业均+0.01%</div></div>
-<div class=card-section>
+<div class=rank-avg>行业均+0.01%</div>
 <div class=warn>偏离MA5 +8.0%</div>
-</div>
 </div>
 </div><div class=footer>以上分析不构成投资建议</div></body></html>

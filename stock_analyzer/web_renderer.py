@@ -14,8 +14,8 @@ def cz(v):
     return "up" if v > 0 else ("down" if v < 0 else "")
 
 def sg(s):
-    if any(k in s for k in ("buy","add")): return "buy"
-    if any(k in s for k in ("sell","avoid")): return "sell"
+    if "买入" in s or "加仓" in s: return "buy"
+    if "减仓" in s or "回避" in s: return "sell"
     return "hold"
 
 def g(s, d):
@@ -24,115 +24,115 @@ def g(s, d):
 def render(al, mr=None):
     css = _css()
     n = datetime.now().strftime("%Y-%m-%d %H:%M")
-    L = []
-    L.append("<html><head><meta charset=UTF-8><style>"+css+"</style></head><body>")
-    L.append("<div class=header><h1>股票分析看板</h1><div class=time>"+n+"</div></div>")
+    B = []
+    B.append("<html><head><meta charset=UTF-8><style>"+css+"</style></head><body>")
+    B.append("<div class=header><h1>股票分析看板</h1><div class=time>"+n+"</div></div>")
 
     if mr and mr.indices:
-        L.append("<div class=market-section><div class=market-grid>")
+        B.append("<div class=market-section><div class=market-grid>")
         for x in mr.indices:
-            L.append("<div class=index-card>")
-            L.append("<div class=name>"+x.index_name+"</div>")
-            L.append("<div class=\"val "+cz(x.percent)+"\">"+str(int(x.price))+"</div>")
-            L.append("<div class=\"change "+cz(x.percent)+"\">"+fc(x.percent)+"</div></div>")
-        L.append("</div></div>")
+            B.append("<div class=index-card>")
+            B.append("<div class=name>"+x.index_name+"</div>")
+            B.append("<div class=\"val "+cz(x.percent)+"\">"+str(int(x.price))+"</div>")
+            B.append("<div class=\"change "+cz(x.percent)+"\">"+fc(x.percent)+"</div></div>")
+        B.append("</div></div>")
 
-    L.append("<div class=grid>")
+    B.append("<div class=grid>")
     for r in al:
         q = r.quote
         if not q: continue
         a = "uarr;" if q.percent>0 else ("darr;" if q.percent<0 else "mdash;")
-        pc, sc = cz(q.percent), sg(r.signal)
+        pc = cz(q.percent)
+        sc = sg(r.signal)
 
-        L.append("<div class=card>")
-        L.append("<div class=card-title>"+q.name+"<span class=code>"+q.code+"</span></div>")
-        L.append("<div class=price-row><span class=price>"+str(q.price)+"</span>")
-        L.append("<span class=\"change "+pc+"\">&"+a+"; "+str(q.change)+" ("+fc(q.percent)+")</span></div>")
+        B.append("<div class=card>")
+        B.append("<div class=card-title>"+q.name+"<span class=code>"+q.code+"</span></div>")
+        B.append("<div class=price-row><span class=price>"+str(q.price)+"</span>")
+        B.append("<span class=\"change "+pc+"\">&"+a+"; "+str(q.change)+" ("+fc(q.percent)+")</span></div>")
 
-        # 行情
-        L.append("<div class=card-section>")
-        L.append("<div class=section-title>行情数据</div>")
-        L.append("<div class=info-grid>")
-        L.append(g("开盘","<span>"+str(q.open)+"</span>"))
-        L.append(g("最高","<span style=color:#3fb950>"+str(q.high)+"</span>"))
-        L.append(g("昨收","<span>"+str(q.prev_close)+"</span>"))
-        L.append(g("最低","<span style=color:#f85149>"+str(q.low)+"</span>"))
-        L.append(g("成交量","<span>"+str(q.volume)+"手</span>"))
-        L.append(g("成交额","<span>"+str(int(q.amount))+"万</span>"))
-        L.append("</div></div>")
+        # -- 价格区间条 --
+        rng = q.high - q.low
+        pct_pos = int((q.price - q.low) / rng * 100) if rng > 0 else 50
+        B.append("<div class=price-bar>")
+        B.append("<span class=bar-label>"+str(q.low)+"</span>")
+        B.append("<div class=bar-track><div class=bar-fill style=width:"+str(pct_pos)+"%></div><div class=bar-dot style=left:"+str(pct_pos)+"%></div></div>")
+        B.append("<span class=bar-label>"+str(q.high)+"</span>")
+        B.append("</div>")
 
-        # 持仓
+        # -- 四格关键数据 --
+        B.append("<div class=stat-row>")
+        B.append("<div class=stat><div class=stat-label>开盘</div><div class=stat-val>"+str(q.open)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>昨收</div><div class=stat-val>"+str(q.prev_close)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>最高</div><div class=stat-val up>"+str(q.high)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>最低</div><div class=stat-val down>"+str(q.low)+"</div></div>")
+        B.append("</div>")
+
+        # -- 成交量行 --
+        B.append("<div class=stat-row>")
+        B.append("<div class=stat><div class=stat-label>成交量</div><div class=stat-val>"+str(q.volume)+"手</div></div>")
+        B.append("<div class=stat><div class=stat-label>成交额</div><div class=stat-val>"+str(int(q.amount))+"万</div></div>")
+        if r.vol_ratio:
+            B.append("<div class=stat><div class=stat-label>量比</div><div class=stat-val>"+str(r.vol_ratio)+"</div></div>")
+            B.append("<div class=stat><div class=stat-label>状态</div><div class=stat-val>"+r.vol_analysis+"</div></div>")
+        B.append("</div>")
+
+        # -- 持仓 --
         if r.cost_price and r.shares:
             pc2 = "up" if r.profit_loss>0 else "down"
-            L.append("<div class=card-section>")
-            L.append("<div class=section-title>持仓明细</div>")
-            L.append("<div class=info-grid>")
-            L.append(g("成本",str(r.cost_price)))
-            L.append(g("持仓",str(r.shares)+"股"))
-            L.append(g("市值",str(int(r.market_value))))
-            L.append(g("盈亏","<span class="+pc2+">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</span>"))
-            L.append("</div></div>")
+            B.append("<div class=section-title>持仓</div>")
+            B.append("<div class=stat-row>")
+            B.append("<div class=stat><div class=stat-label>成本</div><div class=stat-val>"+str(r.cost_price)+"</div></div>")
+            B.append("<div class=stat><div class=stat-label>持仓</div><div class=stat-val>"+str(r.shares)+"股</div></div>")
+            B.append("<div class=stat><div class=stat-label>市值</div><div class=stat-val>"+str(int(r.market_value))+"</div></div>")
+            B.append("<div class=stat><div class=stat-label>盈亏</div><div class=\"stat-val "+pc2+"\">"+str(int(r.profit_loss))+" ("+fc(r.profit_loss_pct)+")</div></div>")
+            B.append("</div>")
 
-        # 价位
-        L.append("<div class=card-section>")
-        L.append("<div class=section-title>参考价位</div>")
-        L.append("<div class=info-grid>")
-        L.append(g("目标价","<span class=t>"+str(r.target_price)+"</span>"))
-        L.append(g("止损价","<span class=s>"+str(r.stop_loss)+"</span>"))
-        L.append(g("枢轴","<span class=gray>"+str(r.pivot)+"</span>"))
-        L.append(g("相对强度","<span class="+pc+">"+fc(r.relative_strength)+"</span>"))
-        L.append("</div></div>")
+        # -- 参考价位 --
+        B.append("<div class=section-title>参考价位</div>")
+        B.append("<div class=stat-row>")
+        B.append("<div class=stat><div class=stat-label>目标价</div><div class=stat-val t>"+str(r.target_price)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>止损价</div><div class=stat-val s>"+str(r.stop_loss)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>枢轴</div><div class=stat-val gray>"+str(r.pivot)+"</div></div>")
+        B.append("<div class=stat><div class=stat-label>相对强度</div><div class=\"stat-val "+pc+"\">"+fc(r.relative_strength)+"</div></div>")
+        B.append("</div>")
 
-        L.append("<div class=\"signal "+sc+"\">"+r.signal+"</div>")
-        L.append("<div class=detail>评分: "+str(r.score)+" | "+r.detail+"</div>")
+        # -- 信号 --
+        B.append("<div class=\"signal "+sc+"\">"+r.signal+"  <span class=score>评分 "+str(r.score)+"</span></div>")
+        B.append("<div class=detail>"+r.detail+"</div>")
 
-        # 均线
+        # -- 均线 --
         if r.ma5:
-            L.append("<div class=card-section>")
-            L.append("<div class=section-title>均线趋势</div>")
-            L.append("<div class=info-grid>")
-            L.append(g("MA5",str(r.ma5)+" <span class="+cz(r.ma5_pct)+">"+fc(r.ma5_pct)+"</span>"))
-            L.append(g("MA10",str(r.ma10)+" <span class="+cz(r.ma10_pct)+">"+fc(r.ma10_pct)+"</span>"))
-            L.append(g("MA20",str(r.ma20)+" <span class="+cz(r.ma20_pct)+">"+fc(r.ma20_pct)+"</span>"))
-            L.append(g("趋势","<span>"+r.trend+"</span>"))
-            L.append("</div></div>")
+            B.append("<div class=section-title>均线</div>")
+            B.append("<div class=stat-row>")
+            B.append("<div class=stat><div class=stat-label>MA5</div><div class=\"stat-val "+cz(r.ma5_pct)+"\">"+str(r.ma5)+" <small>"+fc(r.ma5_pct)+"</small></div></div>")
+            B.append("<div class=stat><div class=stat-label>MA10</div><div class=\"stat-val "+cz(r.ma10_pct)+"\">"+str(r.ma10)+" <small>"+fc(r.ma10_pct)+"</small></div></div>")
+            B.append("<div class=stat><div class=stat-label>MA20</div><div class=\"stat-val "+cz(r.ma20_pct)+"\">"+str(r.ma20)+" <small>"+fc(r.ma20_pct)+"</small></div></div>")
+            B.append("<div class=stat><div class=stat-label>趋势</div><div class=stat-val>"+r.trend+"</div></div>")
+            B.append("</div>")
 
-        # 量
-        if r.vol_ratio:
-            L.append("<div class=card-section>")
-            L.append("<div class=section-title>成交量</div>")
-            L.append("<div class=info-grid>")
-            L.append(g("量比",str(r.vol_ratio)))
-            L.append(g("状态","<span>"+r.vol_analysis+"</span>"))
-            L.append("</div></div>")
-
-        # 排名
+        # -- 行业排名 --
         ir = getattr(r, "_industry_rank", None)
         if ir and ir.ranked_stocks:
-            L.append("<div class=card-section>")
-            L.append("<div class=section-title>行业排名 - "+ir.industry_name+"</div>")
-            L.append("<div class=rank-list>")
+            B.append("<div class=section-title>行业排名 - "+ir.industry_name+"</div>")
+            B.append("<div class=rank-list>")
             for i, s in enumerate(ir.ranked_stocks):
                 cl = "mine" if s.get("code") == r.code else ""
                 p2 = cz(s.get("percent", 0))
                 nm = s.get("name", "")
                 cd = s.get("code", "")
                 pt = s.get("percent", 0)
-                L.append("<div class=\"rank-row "+cl+"\"><span>"+str(i+1)+". "+nm+" ("+cd+")</span><span class="+p2+">"+fc(pt)+"</span></div>")
-            L.append("</div>")
-            L.append("<div class=rank-avg>行业均"+fc(ir.avg_change)+"</div></div>")
+                B.append("<div class=\"rank-row "+cl+"\"><span>"+str(i+1)+". "+nm+" ("+cd+")</span><span class="+p2+">"+fc(pt)+"</span></div>")
+            B.append("</div>")
+            B.append("<div class=rank-avg>行业均"+fc(ir.avg_change)+"</div>")
 
-        # 风险
         if r.warnings:
-            L.append("<div class=card-section>")
             for w in r.warnings:
-                L.append("<div class=warn>"+w+"</div>")
-            L.append("</div>")
+                B.append("<div class=warn>"+w+"</div>")
 
-        L.append("</div>")
+        B.append("</div>")
 
-    L.append("</div><div class=footer>以上分析不构成投资建议</div></body></html>")
-    return "\n".join(L)
+    B.append("</div><div class=footer>以上分析不构成投资建议</div></body></html>")
+    return "\n".join(B)
 
 def save_and_open(html, fname="stock_dashboard.html"):
     p = Path(fname)
