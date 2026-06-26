@@ -101,5 +101,12 @@ class StockAnalysis(BaseModel):
     boards: list[BoardInfo] = Field(default_factory=list)
     peers: list[PeerStock] = Field(default_factory=list)
 
+    # 持仓盈亏
+    cost_price: float = 0.0
+    shares: int = 0
+    profit_loss: float = 0.0            # 浮动盈亏(元)
+    profit_loss_pct: float = 0.0         # 盈亏百分比
+    market_value: float = 0.0            # 持仓市值
+
     # 数据来源
     data_sources: list[str] = Field(default_factory=list)

@@ -45,8 +45,10 @@ def main():
 
     if args.codes:
         codes = args.codes
+        entries = {}
     elif cfg.stocks:
         codes = [s.code for s in cfg.stocks]
+        entries = {s.code: s for s in cfg.stocks}
     else:
         print("[!] 未指定股票代码。", file=sys.stderr)
         sys.exit(1)
@@ -79,7 +81,10 @@ def main():
         results = []
         peer_quotes_map = {}
         for code in codes:
-            r = analyzer.analyze(code.strip(), sources=sources)
+                        entry = entries.get(code.strip() if not isinstance(entries, dict) else code.strip())
+            cp = entry.cost_price or 0 if entry else 0
+            sh = entry.shares or 0 if entry else 0
+            r = analyzer.analyze(code.strip(), sources=sources, cost_price=cp, shares=sh)
             results.append(r)
             if r.quote:
                 peer_quotes_map[code] = analyzer.fetch_peer_quotes(code)

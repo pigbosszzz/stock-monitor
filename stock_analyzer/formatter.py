@@ -91,6 +91,19 @@ def format_analysis(result, show_detail: bool = True,
         )
         if result.data_sources:
             lines.append(f"    {Color.GRAY}数据来源: {', '.join(result.data_sources)}{Color.RESET}")
+
+        # ── 持仓盈亏 ──
+        if result.cost_price > 0 and result.shares > 0:
+            pl = result.profit_loss
+            pl_pct = result.profit_loss_pct
+            pl_color = Color.RED if pl > 0 else (Color.GREEN if pl < 0 else Color.YELLOW)
+            pl_sign = "+" if pl >= 0 else ""
+            lines.append(
+                f"    {Color.CYAN}持仓盈亏{Color.RESET}: "
+                f"成本 {result.cost_price:.2f} x {result.shares:,}股 = "
+                f"市值 {Color.BRIGHT}{result.market_value:,.0f}{Color.RESET}  |  "
+                f"{pl_color}{pl_sign}{pl:,.0f}  ({pl_sign}{pl_pct:.2f}%){Color.RESET}"
+            )
     else:
         return f"\n  [!] {result.name} ({result.code}): 数据获取失败"
 

@@ -3,12 +3,16 @@
 stocks:
   - code: "600183"
     name: "生益科技"
+    cost_price: 137.050
+    shares: 100
     note: "PCB龙头"
 
   - code: "600176"
     name: "中国巨石"
+    cost_price: 70.625
+    shares: 400
     note: "玻纤龙头"
 
   - code: "000725"
     name: "京东方A"
-    note: "面板龙头"
+    note: "面板龙头 — 观望中"
